@@ -27,6 +27,12 @@ function ensureShotsDir() {
 const DESKTOP = { width: 1440, height: 900 };
 const MOBILE = { width: 390, height: 844 };
 
+// A realistic desktop Chrome UA. Many sites (retail, anti-bot CDNs) block
+// unknown user-agents, so identifying as a normal browser greatly reduces
+// failed captures during competitive crawls.
+const REAL_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
 export interface CrawlOutput {
   crawlResults: CrawlResult[];
   screenshots: Screenshot[];
@@ -67,7 +73,12 @@ export async function crawlAudit(
         const url = queue.shift()!;
         if (visited.has(url)) continue;
         visited.add(url);
-        const context = await browser.newContext({ viewport: DESKTOP, userAgent: "BenchBotBot/1.0" });
+        const context = await browser.newContext({
+          viewport: DESKTOP,
+          userAgent: REAL_UA,
+          locale: "en-US",
+          extraHTTPHeaders: { "accept-language": "en-US,en;q=0.9" },
+        });
         const page = await context.newPage();
         try {
           const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
