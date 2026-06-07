@@ -114,6 +114,27 @@ export interface Competitor {
   created_at: string;
 }
 
+/** A node in a site's primary navigation (supports one level of nesting). */
+export interface NavNode {
+  label: string;
+  href?: string;
+  children?: NavNode[];
+}
+
+/** Counts of UI building blocks on a page — the "component inventory". */
+export interface ComponentCounts {
+  buttons: number;
+  links: number;
+  images: number;
+  icons: number; // inline svg
+  inputs: number;
+  forms: number;
+  headings: number;
+  videos: number;
+  iframes: number;
+  sections: number; // landmark/section regions
+}
+
 export interface CrawlResult {
   id: string;
   audit_id: string;
@@ -133,6 +154,10 @@ export interface CrawlResult {
   has_sitemap: boolean;
   status_code: number;
   failed?: boolean;
+  // UX-designer enrichments (optional for backwards compatibility)
+  element_count?: number; // total DOM elements
+  component_counts?: ComponentCounts;
+  nav_tree?: NavNode[]; // complete primary navigation
   created_at: string;
 }
 

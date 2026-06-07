@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Monitor, Smartphone, ImageOff, Download, Copy, Maximize2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ShotImage } from "@/components/audit/shot-image";
 import { useToast } from "@/components/ui/toast";
 import { cn, hostFromUrl } from "@/lib/utils";
 import type { Screenshot, PageType, DeviceType } from "@/lib/types";
@@ -133,12 +134,10 @@ function ScreenshotCard({ s }: { s: Screenshot }) {
   return (
     <figure className="group overflow-hidden rounded-lg border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <ShotImage
           src={s.storage_path}
           alt={`${s.company_name} ${s.page_type} (${s.device_type})`}
           className="h-full w-full object-cover object-top"
-          loading="lazy"
         />
         {/* hover action overlay */}
         <div className="pointer-events-none absolute inset-0 flex items-start justify-end gap-1.5 bg-gradient-to-b from-ink/40 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">

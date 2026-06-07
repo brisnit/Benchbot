@@ -60,15 +60,6 @@ function between(rand: () => number, min: number, max: number): number {
   return Math.round(min + rand() * (max - min));
 }
 
-const PAGE_TYPES: PageType[] = [
-  "homepage",
-  "navigation",
-  "product",
-  "pricing",
-  "blog",
-  "contact",
-];
-
 const NAV_POOL = [
   "Products",
   "Solutions",
@@ -287,12 +278,38 @@ export function generateAuditData(
       created_at: new Date().toISOString(),
     });
 
-    // ---- crawl results (homepage + a few interior pages) ----
-    const pageCount = isTarget ? 6 : 4;
+    // ---- crawl results (distinct page templates) ----
+    const TEMPLATES: PageType[] = ["homepage", "pricing", "product", "blog", "contact", "forms", "account", "search"];
+    const templatePages = isTarget ? TEMPLATES.slice(0, 6) : TEMPLATES.slice(0, 4);
     const nav = [...NAV_POOL].sort(() => rand() - 0.5).slice(0, between(rand, 4, 6));
-    for (let p = 0; p < pageCount; p++) {
-      const pageType = p === 0 ? "homepage" : pick(rand, PAGE_TYPES);
+    // A complete primary navigation with one level of nesting.
+    const navTree = nav.map((label) => ({
+      label,
+      href: `${company.url}/${label.toLowerCase()}`,
+      children:
+        rand() > 0.5
+          ? ["Overview", "Pricing", "Docs"].slice(0, between(rand, 1, 3)).map((c) => ({
+              label: `${label} ${c}`,
+              href: `${company.url}/${label.toLowerCase()}/${c.toLowerCase()}`,
+            }))
+          : undefined,
+    }));
+    templatePages.forEach((pageType, p) => {
       const failed = !isTarget && rand() > 0.92; // occasionally a page fails to crawl
+      // realistic-ish component inventory, varying by template
+      const heavy = pageType === "homepage" || pageType === "product";
+      const components = {
+        buttons: between(rand, heavy ? 14 : 4, heavy ? 42 : 18),
+        links: between(rand, 30, 180),
+        images: between(rand, heavy ? 10 : 2, heavy ? 60 : 20),
+        icons: between(rand, 8, 70),
+        inputs: pageType === "contact" || pageType === "forms" ? between(rand, 4, 12) : between(rand, 0, 4),
+        forms: pageType === "contact" || pageType === "forms" ? between(rand, 1, 3) : between(rand, 0, 1),
+        headings: between(rand, 6, 40),
+        videos: between(rand, 0, 2),
+        iframes: between(rand, 0, 3),
+        sections: between(rand, 6, 24),
+      };
       crawlResults.push({
         id: uid("crl_"),
         audit_id: audit.id,
@@ -309,7 +326,7 @@ export function generateAuditData(
         footer_links: ["Privacy", "Terms", "Careers", "Status", "Contact"],
         ctas: [pick(rand, CTA_POOL), pick(rand, CTA_POOL)],
         forms:
-          pageType === "contact" || pageType === "pricing"
+          pageType === "contact" || pageType === "pricing" || pageType === "forms"
             ? [{ fields: between(rand, 3, 8), label: "Contact / demo request" }]
             : [],
         schema_types: [...SCHEMA_POOL].slice(0, between(rand, 1, 4)),
@@ -317,13 +334,15 @@ export function generateAuditData(
         has_sitemap: rand() > 0.2,
         status_code: failed ? 500 : 200,
         failed,
+        element_count: failed ? 0 : between(rand, 480, 2400),
+        component_counts: failed ? undefined : components,
+        nav_tree: navTree,
         created_at: new Date().toISOString(),
       });
-    }
+    });
 
-    // ---- screenshots ----
-    const shotPages: PageType[] = ["homepage", "navigation", "product", "pricing", "contact"];
-    for (const pageType of shotPages.slice(0, isTarget ? 5 : 3)) {
+    // ---- screenshots (one per crawled template) ----
+    for (const pageType of templatePages.slice(0, isTarget ? 6 : 3)) {
       for (const device of devices) {
         screenshots.push({
           id: uid("shot_"),

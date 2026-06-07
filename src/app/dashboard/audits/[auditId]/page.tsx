@@ -17,6 +17,11 @@ import {
   ConversionAuditSection,
   AiVisibilitySection,
 } from "@/components/audit/sections";
+import {
+  UxInventorySection,
+  PageTemplatesSection,
+  CompleteNavSection,
+} from "@/components/audit/ux-sections";
 
 export default async function AuditDetailPage({
   params,
@@ -82,6 +87,9 @@ export default async function AuditDetailPage({
         </div>
 
         <HeuristicReviewSection report={report} />
+        <UxInventorySection bundle={bundle} />
+        <PageTemplatesSection bundle={bundle} />
+        <CompleteNavSection bundle={bundle} />
         <VisualSitemapSection sitemap={targetSitemap} />
         <IAComparisonSection report={report} />
         <ContentGapSection report={report} />
