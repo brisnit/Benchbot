@@ -68,7 +68,7 @@ export default function LandingPage() {
           </Badge>
           <h1 className="max-w-4xl text-balance text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
             Benchmark anything.{" "}
-            <span className="gradient-text">In minutes, not weeks.</span>
+            <span className="gradient-text">In minutes, not days.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-balance text-lg text-slate-600">
             BenchBot turns days of competitive UX research into a 15-minute, client-ready report:
