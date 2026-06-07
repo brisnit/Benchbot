@@ -24,6 +24,6 @@ EXPOSE 3000
 
 # Persistent app data (audits + screenshots) lives here — mount a Railway
 # volume at /app/.data so it survives redeploys and restarts.
-VOLUME ["/app/.data"]
+# Note: Use Railway Volumes (configured in the dashboard) instead of Docker VOLUME.
 
 CMD ["npm", "run", "start"]
