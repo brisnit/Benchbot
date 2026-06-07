@@ -166,7 +166,25 @@ export async function crawlAudit(
               const name = `${audit.id}_${company.competitorId ?? "target"}_${device}_${uid()}.png`;
               const file = path.join(SHOTS_DIR, name);
               try {
-                await page.screenshot({ path: file, fullPage: false });
+                // Let lazy content/below-the-fold render before a full-page capture.
+                await page.evaluate(async () => {
+                  await new Promise<void>((resolve) => {
+                    let y = 0;
+                    const step = () => {
+                      window.scrollBy(0, window.innerHeight);
+                      y += window.innerHeight;
+                      if (y >= document.body.scrollHeight || y > 12000) {
+                        window.scrollTo(0, 0);
+                        resolve();
+                      } else {
+                        setTimeout(step, 120);
+                      }
+                    };
+                    step();
+                  });
+                });
+                await page.waitForTimeout(300);
+                await page.screenshot({ path: file, fullPage: true });
                 screenshots.push({
                   id: uid("shot_"),
                   audit_id: audit.id,
