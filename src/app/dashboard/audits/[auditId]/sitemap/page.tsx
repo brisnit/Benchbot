@@ -5,7 +5,7 @@ import { getAuditBundle, userInWorkspace } from "@/lib/db";
 import { isRunning } from "@/lib/audit-helpers";
 import { AuditTopbar } from "@/components/audit/audit-topbar";
 import { VisualSitemapSection } from "@/components/audit/sections";
-import { SitemapTree } from "@/components/audit/sitemap-tree";
+import { SitemapDiagram } from "@/components/audit/sitemap-diagram";
 import { SectionCard } from "@/components/audit/section-card";
 import { hostFromUrl } from "@/lib/utils";
 
@@ -40,13 +40,15 @@ export default async function SitemapPage({
                   <p className="mb-2 text-sm font-semibold">
                     {comp?.name ?? "Competitor"}{" "}
                     <span className="font-mono text-xs font-normal text-muted-foreground">
-                      · {s.page_count} pages · depth {s.depth}
+                      · {s.page_count.toLocaleString()} pages · depth {s.depth}
                     </span>
                   </p>
-                  <SitemapTree tree={s.tree} />
-                  {comp && (
-                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">{hostFromUrl(comp.url)}</p>
-                  )}
+                  <SitemapDiagram
+                    tree={s.tree}
+                    pageCount={s.page_count}
+                    depth={s.depth}
+                    host={comp ? hostFromUrl(comp.url) : undefined}
+                  />
                 </div>
               );
             })}

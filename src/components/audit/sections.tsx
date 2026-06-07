@@ -14,7 +14,7 @@ import {
   Target,
 } from "lucide-react";
 import { SectionCard } from "@/components/audit/section-card";
-import { SitemapTree } from "@/components/audit/sitemap-tree";
+import { SitemapDiagram } from "@/components/audit/sitemap-diagram";
 import { ScoreBar, ScorePill, ScoreRing } from "@/components/ui/score";
 import { Badge } from "@/components/ui/badge";
 import { Markdown } from "@/components/audit/markdown";
@@ -178,17 +178,25 @@ export function VisualSitemapSection({ sitemap }: { sitemap: Sitemap | undefined
       description={`${sitemap.page_count.toLocaleString()} pages mapped · nav depth ${sitemap.depth} · information architecture with structural flags.`}
       id="sitemap"
     >
-      <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
-        <SitemapTree tree={sitemap.tree} />
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-lg border border-border p-3 text-center">
-                <p className="font-display text-2xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-              </div>
-            ))}
-          </div>
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-lg border border-border p-3 text-center">
+              <p className="font-display text-2xl font-bold tabular-nums">{s.value.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <SitemapDiagram
+          tree={sitemap.tree}
+          pageCount={sitemap.page_count}
+          depth={sitemap.depth}
+          printable
+          showSavePdf
+        />
+
+        <div className="grid gap-4 sm:grid-cols-2">
           {sitemap.duplicate_sections.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#B5740B]">Duplicate sections</p>
@@ -202,9 +210,13 @@ export function VisualSitemapSection({ sitemap }: { sitemap: Sitemap | undefined
           <div>
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-critical">Missing common sections</p>
             <div className="flex flex-wrap gap-1.5">
-              {sitemap.missing_sections.map((m) => (
-                <Badge key={m} variant="critical">{m}</Badge>
-              ))}
+              {sitemap.missing_sections.length ? (
+                sitemap.missing_sections.map((m) => (
+                  <Badge key={m} variant="critical">{m}</Badge>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">None — all common sections present.</span>
+              )}
             </div>
           </div>
         </div>

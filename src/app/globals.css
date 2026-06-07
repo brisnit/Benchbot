@@ -96,3 +96,62 @@
     padding: 0 !important;
   }
 }
+
+/* ── Visual sitemap diagram connectors (brand "site map" style) ── */
+.smtree ul {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.smtree li {
+  position: relative;
+  padding-left: 26px;
+  list-style: none;
+}
+/* vertical spine */
+.smtree li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-left: 1.5px solid #d7dce8;
+}
+/* horizontal tick into the node header */
+.smtree li::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 26px;
+  width: 26px;
+  border-top: 1.5px solid #d7dce8;
+}
+/* last child: stop the spine at the tick */
+.smtree li:last-child::before {
+  height: 26px;
+}
+
+/* Print only the sitemap when saving it to PDF */
+@media print {
+  body.printing-sitemap * {
+    visibility: hidden;
+  }
+  body.printing-sitemap #sitemap-print,
+  body.printing-sitemap #sitemap-print * {
+    visibility: visible;
+  }
+  body.printing-sitemap #sitemap-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+  }
+  body.printing-sitemap .sitemap-noprint {
+    display: none !important;
+  }
+}
+@page {
+  size: landscape;
+}
