@@ -13,6 +13,7 @@ import {
 import { generateAuditData, type CompanyInput } from "@/lib/demo/generate";
 import { analyzeAudit } from "@/lib/analysis/analyze";
 import { crawlAudit } from "@/lib/crawler/crawl";
+import { buildRealSitemaps } from "@/lib/crawler/sitemap";
 import { nameFromUrl } from "@/lib/utils";
 import type { Audit, AuditStatus, Competitor } from "@/lib/types";
 
@@ -92,7 +93,17 @@ export async function runAudit(auditId: string): Promise<void> {
 
     // ---- Sitemaps ----
     await step(auditId, "generating_sitemap", 50, 200);
-    replaceSitemaps(auditId, baseline.sitemaps);
+    let sitemaps = baseline.sitemaps;
+    if (env.enableRealCrawl) {
+      try {
+        // Real sitemaps from sitemap.xml + crawled links (per-company fallback).
+        const real = await buildRealSitemaps(audit, companies, crawlResults, baseline.sitemaps);
+        if (real.length) sitemaps = real;
+      } catch (err) {
+        failures.push(`sitemap build: ${(err as Error).message.slice(0, 60)}`);
+      }
+    }
+    replaceSitemaps(auditId, sitemaps);
     await sleep(400);
 
     await step(auditId, "reviewing_ux", 64, 600);

@@ -172,7 +172,12 @@ export function VisualSitemapSection({ sitemap }: { sitemap: Sitemap | undefined
     { label: "Missing sections", value: sitemap.missing_sections.length },
   ];
   return (
-    <SectionCard icon={GitBranch} title="Visual Sitemap" description="Information architecture of your site, with structural flags." id="sitemap">
+    <SectionCard
+      icon={GitBranch}
+      title="Visual Sitemap"
+      description={`${sitemap.page_count.toLocaleString()} pages mapped · nav depth ${sitemap.depth} · information architecture with structural flags.`}
+      id="sitemap"
+    >
       <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
         <SitemapTree tree={sitemap.tree} />
         <div className="space-y-4">
