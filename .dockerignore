@@ -1,0 +1,21 @@
+# Never copy secrets or local-only artifacts into the image.
+.env
+.env.local
+.env*.local
+
+# Build/runtime artifacts (regenerated inside the image)
+node_modules
+.next
+.data
+
+# Repo / OS cruft
+.git
+.gitignore
+.DS_Store
+*.tsbuildinfo
+npm-debug.log*
+
+# Design source (not used at runtime)
+brand assets
+README.md
+DEPLOY.md

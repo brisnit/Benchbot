@@ -1,0 +1,106 @@
+"use client";
+
+import * as React from "react";
+import { FileText, FileType, Presentation, Code2, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/audit/copy-button";
+import { Markdown } from "@/components/audit/markdown";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+
+export function ReportBuilder({
+  executiveSummary,
+  fullMarkdown,
+  targetName,
+}: {
+  executiveSummary: string;
+  fullMarkdown: string;
+  targetName: string;
+}) {
+  const { toast } = useToast();
+  const [view, setView] = React.useState<"formatted" | "markdown">("formatted");
+
+  function exportPdf() {
+    toast({
+      title: "Preparing PDF…",
+      description: "Use your browser's “Save as PDF” in the print dialog.",
+    });
+    setTimeout(() => window.print(), 400);
+  }
+
+  function exportPptx() {
+    toast({
+      title: "PowerPoint export is coming soon",
+      description: "This is stubbed in the MVP. Copy the markdown to use it now.",
+    });
+  }
+
+  return (
+    <div>
+      {/* Action bar — hidden when printing */}
+      <div className="mb-5 flex flex-wrap items-center gap-2 print:hidden">
+        <CopyButton value={executiveSummary} label="Copy executive summary" toastLabel="Executive summary copied" />
+        <CopyButton value={fullMarkdown} label="Copy full report markdown" toastLabel="Full report copied" />
+        <Button variant="secondary" size="sm" onClick={exportPdf}>
+          <FileType className="h-4 w-4" /> Export PDF
+        </Button>
+        <Button variant="secondary" size="sm" onClick={exportPptx}>
+          <Presentation className="h-4 w-4" /> Export PowerPoint
+        </Button>
+
+        <div className="ml-auto flex rounded-lg border border-border p-0.5">
+          <ToggleBtn active={view === "formatted"} onClick={() => setView("formatted")}>
+            <Eye className="h-3.5 w-3.5" /> Formatted
+          </ToggleBtn>
+          <ToggleBtn active={view === "markdown"} onClick={() => setView("markdown")}>
+            <Code2 className="h-3.5 w-3.5" /> Markdown
+          </ToggleBtn>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-white shadow-sm">
+        {/* Report letterhead */}
+        <div className="flex items-center justify-between border-b border-border bg-secondary/40 px-6 py-4 print:border-b-2">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-brand" />
+            <span className="font-display font-semibold">{targetName} — Competitive Audit</span>
+          </div>
+          <span className="font-mono text-xs text-muted-foreground">BenchBot</span>
+        </div>
+
+        <div className="px-6 py-6 md:px-10 md:py-8">
+          {view === "formatted" ? (
+            <Markdown content={fullMarkdown} />
+          ) : (
+            <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-ink p-4 font-mono text-xs leading-relaxed text-slate-200 scrollbar-thin">
+              {fullMarkdown}
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToggleBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+        active ? "bg-brand text-white" : "text-muted-foreground hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
+  );
+}

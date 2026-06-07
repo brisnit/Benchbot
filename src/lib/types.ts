@@ -1,0 +1,279 @@
+// ─────────────────────────────────────────────────────────────
+// Core domain types for BenchBot. These mirror the database schema
+// (see supabase/migrations) and are used by both the Supabase and the
+// local in-memory data layers so the rest of the app is storage-agnostic.
+// ─────────────────────────────────────────────────────────────
+
+export type Role = "owner" | "admin" | "editor" | "viewer" | "client";
+
+export type SiteType =
+  | "b2b"
+  | "ecommerce"
+  | "saas"
+  | "nonprofit"
+  | "education"
+  | "healthcare"
+  | "hospitality"
+  | "marketplace"
+  | "other";
+
+export type AuditGoal =
+  | "full_benchmark"
+  | "ux_heuristic"
+  | "homepage"
+  | "navigation_ia"
+  | "ecommerce"
+  | "lead_gen"
+  | "seo_geo"
+  | "accessibility"
+  | "product_page"
+  | "content_strategy";
+
+export type DeviceMode = "desktop" | "mobile" | "both";
+
+export type AuditStatus =
+  | "draft"
+  | "finding_competitors"
+  | "capturing_screenshots"
+  | "mapping_navigation"
+  | "generating_sitemap"
+  | "reviewing_ux"
+  | "scoring_heuristics"
+  | "finding_content_gaps"
+  | "building_report"
+  | "complete"
+  | "failed";
+
+export type CompetitorType = "direct" | "indirect" | "inspiration" | "custom" | "target";
+
+export type DeviceType = "desktop" | "mobile";
+
+export type PageType =
+  | "homepage"
+  | "navigation"
+  | "product"
+  | "category"
+  | "search"
+  | "forms"
+  | "pricing"
+  | "account"
+  | "blog"
+  | "contact"
+  | "footer"
+  | "other";
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  created_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  owner_id: string;
+  plan?: string;
+  created_at: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  role: Role;
+  created_at: string;
+}
+
+export interface Audit {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  target_url: string;
+  target_name: string;
+  site_type: SiteType;
+  audit_goal: AuditGoal;
+  status: AuditStatus;
+  device_mode: DeviceMode;
+  crawl_settings: string[];
+  progress: number; // 0-100
+  error?: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
+}
+
+export interface Competitor {
+  id: string;
+  audit_id: string;
+  name: string;
+  url: string;
+  competitor_type: CompetitorType;
+  reason?: string;
+  selected: boolean;
+  created_at: string;
+}
+
+export interface CrawlResult {
+  id: string;
+  audit_id: string;
+  competitor_id: string | null; // null = target site
+  url: string;
+  page_type: PageType;
+  title: string;
+  meta_description: string;
+  h1: string;
+  nav_items: string[];
+  links: { label: string; href: string }[];
+  footer_links: string[];
+  ctas: string[];
+  forms: { fields: number; label: string }[];
+  schema_types: string[];
+  has_robots: boolean;
+  has_sitemap: boolean;
+  status_code: number;
+  failed?: boolean;
+  created_at: string;
+}
+
+export interface Screenshot {
+  id: string;
+  audit_id: string;
+  competitor_id: string | null;
+  company_name: string;
+  url: string;
+  device_type: DeviceType;
+  page_type: PageType;
+  storage_path: string; // public URL or data placeholder descriptor
+  created_at: string;
+}
+
+export interface SitemapNode {
+  label: string;
+  children?: SitemapNode[];
+}
+
+export interface Sitemap {
+  id: string;
+  audit_id: string;
+  competitor_id: string | null;
+  tree: SitemapNode;
+  page_count: number;
+  depth: number;
+  duplicate_sections: string[];
+  missing_sections: string[];
+  created_at: string;
+}
+
+export interface AuditScore {
+  id: string;
+  audit_id: string;
+  competitor_id: string | null;
+  company_name: string;
+  url: string;
+  ux_score: number;
+  mobile_score: number;
+  navigation_score: number;
+  content_score: number;
+  conversion_score: number;
+  ai_visibility_score: number;
+  created_at: string;
+}
+
+export type FindingPriority = "high" | "medium" | "low";
+
+export interface AuditFinding {
+  id: string;
+  audit_id: string;
+  competitor_id: string | null;
+  category: string; // heuristic / section name
+  title: string;
+  description: string;
+  evidence: string;
+  recommendation: string;
+  score: number; // 0-100
+  priority: FindingPriority;
+  created_at: string;
+}
+
+export interface HeuristicScore {
+  key: string;
+  label: string;
+  score: number;
+  evidence: string;
+  recommendation: string;
+}
+
+export interface IAComparison {
+  common_nav_labels: string[];
+  hierarchy_differences: string[];
+  search_visibility: string;
+  cta_placement: string;
+  footer_structure: string;
+}
+
+export interface ContentGap {
+  topic: string;
+  covered_by: string[];
+  opportunity: string;
+  priority: FindingPriority;
+}
+
+export interface ConversionAudit {
+  cta_clarity: string;
+  form_length: string;
+  contact_flow: string;
+  sticky_ctas: string;
+  trust_signals: string;
+  lead_magnets: string;
+  score: number;
+}
+
+export interface AiVisibilityAudit {
+  robots_txt: string;
+  sitemap_xml: string;
+  schema_markup: string;
+  metadata: string;
+  faq_schema: string;
+  product_schema: string;
+  organization_schema: string;
+  crawlability: string;
+  llm_clarity: string;
+  score: number;
+}
+
+export interface ReportJson {
+  overall_score: number;
+  top_findings: string[];
+  top_opportunities: string[];
+  biggest_gaps: string[];
+  next_steps: string[];
+  heuristics: HeuristicScore[];
+  ia_comparison: IAComparison;
+  content_gaps: ContentGap[];
+  conversion_audit: ConversionAudit;
+  ai_visibility: AiVisibilityAudit;
+  ai_estimated: boolean; // true when generated without real web data
+}
+
+export interface Report {
+  id: string;
+  audit_id: string;
+  executive_summary: string;
+  full_report_markdown: string;
+  report_json: ReportJson;
+  created_at: string;
+  updated_at: string;
+}
+
+// A fully-hydrated audit, returned by GET /api/audits/[id]
+export interface AuditBundle {
+  audit: Audit;
+  competitors: Competitor[];
+  scores: AuditScore[];
+  screenshots: Screenshot[];
+  sitemaps: Sitemap[];
+  findings: AuditFinding[];
+  crawlResults: CrawlResult[];
+  report: Report | null;
+}
