@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, Camera, GitBranch, FileText } from "lucide-react";
 import { requireSession } from "@/lib/auth";
 import { getAuditBundle, userInWorkspace } from "@/lib/db";
+import { hostFromUrl } from "@/lib/utils";
 import { isRunning } from "@/lib/audit-helpers";
 import { RunView } from "@/components/audit/run-view";
 import { AuditTopbar } from "@/components/audit/audit-topbar";
@@ -90,7 +91,11 @@ export default async function AuditDetailPage({
         <UxInventorySection bundle={bundle} />
         <PageTemplatesSection bundle={bundle} />
         <CompleteNavSection bundle={bundle} />
-        <VisualSitemapSection sitemap={targetSitemap} />
+        <VisualSitemapSection
+          sitemap={targetSitemap}
+          name={audit.target_name}
+          host={hostFromUrl(audit.target_url)}
+        />
         <IAComparisonSection report={report} />
         <ContentGapSection report={report} />
         <ConversionAuditSection report={report} />

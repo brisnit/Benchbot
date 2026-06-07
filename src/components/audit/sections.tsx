@@ -14,7 +14,7 @@ import {
   Target,
 } from "lucide-react";
 import { SectionCard } from "@/components/audit/section-card";
-import { SitemapDiagram } from "@/components/audit/sitemap-diagram";
+import { SitemapGallery } from "@/components/audit/sitemap-gallery";
 import { ScoreBar, ScorePill, ScoreRing } from "@/components/ui/score";
 import { Badge } from "@/components/ui/badge";
 import { Markdown } from "@/components/audit/markdown";
@@ -157,7 +157,15 @@ export function HeuristicReviewSection({ report }: { report: Report }) {
 }
 
 // ── 5. Visual Sitemap ─────────────────────────────────────────
-export function VisualSitemapSection({ sitemap }: { sitemap: Sitemap | undefined }) {
+export function VisualSitemapSection({
+  sitemap,
+  name = "Your site",
+  host = "",
+}: {
+  sitemap: Sitemap | undefined;
+  name?: string;
+  host?: string;
+}) {
   if (!sitemap) {
     return (
       <SectionCard icon={GitBranch} title="Visual Sitemap" id="sitemap">
@@ -188,12 +196,8 @@ export function VisualSitemapSection({ sitemap }: { sitemap: Sitemap | undefined
           ))}
         </div>
 
-        <SitemapDiagram
-          tree={sitemap.tree}
-          pageCount={sitemap.page_count}
-          depth={sitemap.depth}
-          printable
-          showSavePdf
+        <SitemapGallery
+          items={[{ sitemap, name, host, isTarget: true }]}
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
