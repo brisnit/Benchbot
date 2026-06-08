@@ -1,5 +1,23 @@
 import { generateAuditData } from "@/lib/demo/generate";
-import type { Audit, Competitor, Report } from "@/lib/types";
+import type { Audit, Competitor, CompetitorType, Report, Screenshot } from "@/lib/types";
+
+// The public /example-report uses a real, recognisable competitive set (Nike vs
+// peers) with REAL captured homepage screenshots stored in /public/example.
+// Scores/findings/sitemaps are AI-estimated for illustration.
+const EXAMPLE_SITES: {
+  id: string | null;
+  slug: string;
+  name: string;
+  url: string;
+  type: CompetitorType;
+  reason: string;
+}[] = [
+  { id: null, slug: "nike", name: "Nike", url: "https://www.nike.com", type: "target", reason: "" },
+  { id: "ex_puma", slug: "puma", name: "Puma", url: "https://us.puma.com", type: "direct", reason: "Direct global athletic-wear competitor." },
+  { id: "ex_ua", slug: "underarmour", name: "Under Armour", url: "https://www.underarmour.com", type: "direct", reason: "Performance apparel head-to-head." },
+  { id: "ex_on", slug: "on", name: "On", url: "https://www.on.com", type: "inspiration", reason: "Best-in-class DTC running brand experience." },
+  { id: "ex_allbirds", slug: "allbirds", name: "Allbirds", url: "https://www.allbirds.com", type: "inspiration", reason: "Sustainable-DTC merchandising craft." },
+];
 
 // Builds a complete, non-persisted sample audit for the public /example-report
 // page so prospects can see the full output without signing up.
@@ -9,13 +27,13 @@ export function buildExampleBundle() {
     id: "aud_example",
     workspace_id: "ws_example",
     user_id: "usr_example",
-    target_url: "https://acmecloud.com",
-    target_name: "Acme Cloud",
-    site_type: "saas",
+    target_url: "https://www.nike.com",
+    target_name: "Nike",
+    site_type: "ecommerce",
     audit_goal: "full_benchmark",
     status: "complete",
     device_mode: "both",
-    crawl_settings: ["homepage", "navigation", "pricing", "forms", "footer", "schema_geo"],
+    crawl_settings: ["homepage", "navigation", "product", "search", "mobile", "footer"],
     progress: 100,
     error: null,
     created_at: created,
@@ -23,13 +41,37 @@ export function buildExampleBundle() {
     completed_at: created,
   };
 
-  const competitors: Competitor[] = [
-    { id: "ex_1", audit_id: audit.id, name: "Vercel", url: "https://vercel.com", competitor_type: "direct", reason: "Direct platform competitor.", selected: true, created_at: created },
-    { id: "ex_2", audit_id: audit.id, name: "Netlify", url: "https://netlify.com", competitor_type: "direct", reason: "Overlapping audience.", selected: true, created_at: created },
-    { id: "ex_3", audit_id: audit.id, name: "Linear", url: "https://linear.app", competitor_type: "inspiration", reason: "Best-in-class marketing craft.", selected: true, created_at: created },
-  ];
+  const competitors: Competitor[] = EXAMPLE_SITES.filter((s) => s.id).map((s) => ({
+    id: s.id as string,
+    audit_id: audit.id,
+    name: s.name,
+    url: s.url,
+    competitor_type: s.type,
+    reason: s.reason,
+    selected: true,
+    created_at: created,
+  }));
 
   const data = generateAuditData(audit, competitors);
+
+  // Replace generated placeholder screenshots with the REAL captured ones.
+  const screenshots: Screenshot[] = [];
+  for (const s of EXAMPLE_SITES) {
+    for (const device of ["desktop", "mobile"] as const) {
+      screenshots.push({
+        id: `shot_${s.slug}_${device}`,
+        audit_id: audit.id,
+        competitor_id: s.id,
+        company_name: s.name,
+        url: s.url,
+        device_type: device,
+        page_type: "homepage",
+        storage_path: `/example/${s.slug}-${device}.png`,
+        created_at: created,
+      });
+    }
+  }
+
   const report: Report = {
     ...data.report,
     id: "rep_example",
@@ -42,7 +84,7 @@ export function buildExampleBundle() {
     competitors,
     report,
     scores: data.scores,
-    screenshots: data.screenshots,
+    screenshots,
     sitemaps: data.sitemaps,
   };
 }

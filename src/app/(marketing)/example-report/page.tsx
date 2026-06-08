@@ -33,8 +33,9 @@ export default function ExampleReportPage() {
           {audit.target_name} vs. its competitive set
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-slate-600">
-          This is a live example of a BenchBot report — exactly what you get after running an audit.
-          Figures here are AI-estimated for illustration.
+          A live example of a BenchBot report — exactly what you get after running an audit. The
+          screenshots are real captures of each brand; scores and findings are AI-estimated for
+          illustration.
         </p>
         <div className="mt-6 flex justify-center">
           <Button asChild variant="gradient">
@@ -52,7 +53,7 @@ export default function ExampleReportPage() {
         <SectionCard
           icon={Camera}
           title="Screenshots Library"
-          description="Desktop and mobile captures across the competitive set."
+          description="Real desktop and mobile homepage captures across the competitive set."
         >
           <ScreenshotsLibrary screenshots={screenshots} />
         </SectionCard>
