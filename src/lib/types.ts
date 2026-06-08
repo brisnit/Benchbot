@@ -135,6 +135,31 @@ export interface ComponentCounts {
   sections: number; // landmark/section regions
 }
 
+/** One accessibility check result. */
+export interface A11yCheck {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail" | "info";
+  detail: string;
+  count?: number;
+}
+
+/** DOM-based accessibility snapshot for a page (its homepage, typically). */
+export interface A11yReport {
+  score: number; // 0-100
+  altCoverage: number; // % images with alt (or decorative)
+  totalImages: number;
+  labelCoverage: number; // % form controls with an accessible name
+  totalInputs: number;
+  contrastSampled: number; // text nodes sampled
+  contrastIssues: number; // sampled nodes failing AA contrast
+  landmarksPresent: number; // count of key landmarks found
+  h1Count: number;
+  hasLang: boolean;
+  ariaCount: number;
+  checks: A11yCheck[];
+}
+
 export interface CrawlResult {
   id: string;
   audit_id: string;
@@ -158,6 +183,7 @@ export interface CrawlResult {
   element_count?: number; // total DOM elements
   component_counts?: ComponentCounts;
   nav_tree?: NavNode[]; // complete primary navigation
+  a11y?: A11yReport; // accessibility snapshot (homepage)
   created_at: string;
 }
 

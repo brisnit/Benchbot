@@ -1,5 +1,6 @@
 import { nameFromUrl } from "@/lib/utils";
 import type {
+  A11yReport,
   AuditBundle,
   ComponentCounts,
   CrawlResult,
@@ -172,6 +173,33 @@ export function navByCompany(bundle: AuditBundle): CompanyNav[] {
     }
     return { competitorId: co.competitorId, name: co.name, host: hostOf(co.url), nav };
   });
+}
+
+export interface CompanyA11y {
+  competitorId: string | null;
+  name: string;
+  host: string;
+  isTarget: boolean;
+  report: A11yReport;
+}
+
+/** Accessibility report for each company (from its homepage crawl). */
+export function a11yByCompany(bundle: AuditBundle): CompanyA11y[] {
+  return companyList(bundle)
+    .map((co) => {
+      const pages = bundle.crawlResults.filter((r) => r.competitor_id === co.competitorId);
+      const home = pages.find((p) => p.page_type === "homepage") ?? pages[0];
+      return home?.a11y
+        ? {
+            competitorId: co.competitorId,
+            name: co.name,
+            host: hostOf(co.url),
+            isTarget: co.competitorId === null,
+            report: home.a11y,
+          }
+        : null;
+    })
+    .filter((x): x is CompanyA11y => x !== null);
 }
 
 function hostOf(url: string): string {

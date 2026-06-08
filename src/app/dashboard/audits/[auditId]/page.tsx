@@ -23,6 +23,7 @@ import {
   PageTemplatesSection,
   CompleteNavSection,
 } from "@/components/audit/ux-sections";
+import { AccessibilitySection } from "@/components/audit/accessibility-section";
 
 export default async function AuditDetailPage({
   params,
@@ -91,6 +92,7 @@ export default async function AuditDetailPage({
         <UxInventorySection bundle={bundle} />
         <PageTemplatesSection bundle={bundle} />
         <CompleteNavSection bundle={bundle} />
+        <AccessibilitySection bundle={bundle} />
         <VisualSitemapSection
           sitemap={targetSitemap}
           name={audit.target_name}

@@ -5,6 +5,7 @@ import {
 } from "@/lib/constants";
 import { clampScore, hostFromUrl, nameFromUrl, uid } from "@/lib/utils";
 import type {
+  A11yReport,
   Audit,
   AuditFinding,
   AuditScore,
@@ -232,6 +233,70 @@ function buildHeuristics(rand: () => number, name: string): HeuristicScore[] {
   });
 }
 
+// Synthesize a plausible accessibility report for demo/no-crawl mode.
+function synthA11y(rand: () => number, type: Competitor["competitor_type"]): A11yReport {
+  const good = type === "inspiration";
+  const altCoverage = between(rand, good ? 88 : 55, good ? 100 : 92);
+  const labelCoverage = between(rand, good ? 90 : 60, 100);
+  const contrastSampled = between(rand, 80, 120);
+  const contrastIssues = good ? between(rand, 0, 3) : between(rand, 2, 18);
+  const totalImages = between(rand, 12, 60);
+  const totalInputs = between(rand, 1, 8);
+  const h1Count = rand() > 0.7 ? between(rand, 0, 3) : 1;
+  const hasLang = rand() > 0.12;
+  const hasMain = rand() > (good ? 0.05 : 0.4);
+  const skipLink = rand() > (good ? 0.3 : 0.7);
+  const zoomDisabled = rand() > (good ? 0.95 : 0.8);
+  const noName = good ? between(rand, 0, 2) : between(rand, 1, 9);
+  const landmarksPresent = hasMain ? between(rand, 3, 4) : between(rand, 1, 2);
+  const ariaCount = between(rand, 8, 180);
+
+  const st = (b: boolean, warnVal?: boolean): A11yReport["checks"][number]["status"] =>
+    b ? "pass" : warnVal ? "warn" : "fail";
+
+  const checks: A11yReport["checks"] = [
+    { id: "lang", label: "Page language declared", status: hasLang ? "pass" : "fail", detail: hasLang ? 'lang="en"' : "No lang attribute on <html>." },
+    { id: "title", label: "Document title", status: "pass", detail: "Title present." },
+    { id: "alt", label: "Image alt text", status: st(altCoverage >= 98, altCoverage >= 85), detail: `${Math.round((totalImages * (100 - altCoverage)) / 100)} of ${totalImages} images missing an alt attribute.`, count: Math.round((totalImages * (100 - altCoverage)) / 100) },
+    { id: "labels", label: "Form field labels", status: st(labelCoverage >= 99, labelCoverage >= 80), detail: `${Math.round((totalInputs * (100 - labelCoverage)) / 100)} of ${totalInputs} controls lack an accessible label.` },
+    { id: "names", label: "Links & buttons named", status: st(noName === 0, noName <= 2), detail: `${noName} links/buttons have no accessible name.`, count: noName },
+    { id: "h1", label: "Single top-level heading", status: h1Count === 1 ? "pass" : "warn", detail: h1Count === 1 ? "Exactly one <h1>." : `${h1Count} <h1> elements.`, count: h1Count },
+    { id: "landmarks", label: "Landmark regions", status: st(landmarksPresent >= 3, landmarksPresent >= 1), detail: `${landmarksPresent} key landmarks present.`, count: landmarksPresent },
+    { id: "main", label: "Main content landmark", status: hasMain ? "pass" : "fail", detail: hasMain ? "Has a <main> region." : "No <main> landmark." },
+    { id: "skiplink", label: "Skip-to-content link", status: skipLink ? "pass" : "warn", detail: skipLink ? "Skip link detected." : "No skip-to-content link found." },
+    { id: "zoom", label: "Pinch-zoom allowed", status: zoomDisabled ? "fail" : "pass", detail: zoomDisabled ? "Zoom disabled in viewport meta." : "Users can zoom." },
+    { id: "contrast", label: "Text contrast (sampled)", status: st(contrastIssues === 0, contrastIssues <= 3), detail: `${contrastIssues} of ${contrastSampled} sampled text elements fall below WCAG AA contrast.`, count: contrastIssues },
+    { id: "aria", label: "ARIA roles / attributes", status: "info", detail: `${ariaCount} ARIA role/attribute usages found.`, count: ariaCount },
+  ];
+
+  let score = 100;
+  if (!hasLang) score -= 8;
+  score -= Math.round((1 - altCoverage / 100) * 15);
+  score -= Math.round((1 - labelCoverage / 100) * 15);
+  score -= Math.min(20, contrastIssues * 2);
+  if (h1Count !== 1) score -= 5;
+  if (!hasMain) score -= 6;
+  if (!skipLink) score -= 3;
+  if (zoomDisabled) score -= 6;
+  score -= Math.min(10, noName);
+  score = clampScore(score);
+
+  return {
+    score,
+    altCoverage,
+    totalImages,
+    labelCoverage,
+    totalInputs,
+    contrastSampled,
+    contrastIssues,
+    landmarksPresent,
+    h1Count,
+    hasLang,
+    ariaCount,
+    checks,
+  };
+}
+
 export function generateAuditData(
   audit: Audit,
   competitors: Competitor[],
@@ -310,6 +375,7 @@ export function generateAuditData(
         iframes: between(rand, 0, 3),
         sections: between(rand, 6, 24),
       };
+      const a11y = p === 0 && !failed ? synthA11y(rand, company.type) : undefined;
       crawlResults.push({
         id: uid("crl_"),
         audit_id: audit.id,
@@ -337,6 +403,7 @@ export function generateAuditData(
         element_count: failed ? 0 : between(rand, 480, 2400),
         component_counts: failed ? undefined : components,
         nav_tree: navTree,
+        a11y,
         created_at: new Date().toISOString(),
       });
     });

@@ -9,6 +9,8 @@ import type {
   Screenshot,
 } from "@/lib/types";
 import type { CompanyInput } from "@/lib/demo/generate";
+import { evaluateA11y } from "@/lib/crawler/a11y";
+import type { A11yReport } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────
 // Real crawler powered by Playwright. Best-effort and fault-tolerant:
@@ -180,13 +182,19 @@ export async function crawlAudit(
             };
           });
 
-          // robots / sitemap availability (homepage only)
+          // robots / sitemap availability + accessibility audit (homepage only)
           let hasRobots = false;
           let hasSitemap = false;
+          let a11y: A11yReport | undefined;
           if (visited.size === 1) {
             const origin = new URL(url).origin;
             hasRobots = await headOk(page, `${origin}/robots.txt`);
             hasSitemap = await headOk(page, `${origin}/sitemap.xml`);
+            try {
+              a11y = await page.evaluate(evaluateA11y);
+            } catch {
+              /* a11y best-effort; skip on failure */
+            }
           }
 
           const pageType = classifyPage(url, data.title);
@@ -212,6 +220,7 @@ export async function crawlAudit(
             element_count: data.elementCount,
             component_counts: data.components,
             nav_tree: data.navTree,
+            a11y,
             created_at: new Date().toISOString(),
           });
 
