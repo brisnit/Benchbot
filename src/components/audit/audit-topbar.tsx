@@ -37,6 +37,7 @@ export function AuditTopbar({
   const [deleting, setDeleting] = React.useState(false);
 
   const base = `/dashboard/audits/${audit.id}`;
+  const apiBase = `/api/audits/${audit.id}`;
   const tabs = [
     { href: base, label: "Overview" },
     { href: `${base}/screenshots`, label: "Screenshots" },
@@ -47,7 +48,7 @@ export function AuditTopbar({
   async function reRun() {
     setReRunning(true);
     try {
-      const res = await fetch(`${base}/run`, { method: "POST" });
+      const res = await fetch(`${apiBase}/run`, { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error ?? "Could not start");
       toast({ title: "Re-running audit", variant: "success" });
       router.push(base);
@@ -61,7 +62,7 @@ export function AuditTopbar({
   async function remove() {
     setDeleting(true);
     try {
-      const res = await fetch(base, { method: "DELETE" });
+      const res = await fetch(apiBase, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json()).error ?? "Could not delete");
       toast({ title: "Audit deleted", variant: "success" });
       router.push("/dashboard/audits");

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowUpRight, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Progress } from "@/components/ui/progress";
 import { ScorePill } from "@/components/ui/score";
+import { AuditCardMenu } from "@/components/dashboard/audit-card-menu";
 import { auditGoalLabel } from "@/lib/constants";
 import { hostFromUrl, relativeTime } from "@/lib/utils";
 import { isRunning } from "@/lib/audit-helpers";
@@ -19,9 +20,13 @@ export function AuditCard({
   competitorCount?: number;
 }) {
   const running = isRunning(audit.status);
+  const href = `/dashboard/audits/${audit.id}`;
   return (
-    <Link href={`/dashboard/audits/${audit.id}`} className="group block">
-      <Card className="h-full p-5 transition-all hover:border-brand/40 hover:shadow-md">
+    <Card className="group relative h-full p-5 transition-all hover:border-brand/40 hover:shadow-md">
+      {/* Stretched link makes the whole card clickable without nesting the menu inside an <a>. */}
+      <Link href={href} className="absolute inset-0 z-0 rounded-xl" aria-label={`Open ${audit.target_name} audit`} />
+
+      <div className="pointer-events-none relative z-10">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
@@ -34,7 +39,10 @@ export function AuditCard({
               </p>
             </div>
           </div>
-          <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-brand" />
+          {/* menu re-enables pointer events for itself */}
+          <div className="pointer-events-auto">
+            <AuditCardMenu auditId={audit.id} href={href} />
+          </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between">
@@ -59,7 +67,7 @@ export function AuditCard({
             {relativeTime(audit.created_at)}
           </span>
         </div>
-      </Card>
-    </Link>
+      </div>
+    </Card>
   );
 }
