@@ -1,4 +1,4 @@
-// Collaborative board ("Team Setup") domain types.
+// Collaborative board (Workspace canvas) domain types.
 
 export type BoardElementType =
   | "text"

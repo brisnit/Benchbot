@@ -150,7 +150,7 @@ export function TeamPanel({
 
             <div className="border-t border-border px-5 py-3">
               <p className={cn("text-xs text-muted-foreground")}>
-                Anyone you add can open <strong>Team Setup</strong> and collaborate on the canvas in
+                Anyone you add can open the <strong>Workspace</strong> and collaborate on the canvas in
                 real time. Invitations are seat-based in this MVP.
               </p>
             </div>

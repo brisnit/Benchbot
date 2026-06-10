@@ -3,7 +3,7 @@ import { listAudits, listMembersEnriched } from "@/lib/db";
 import { auditGoalLabel } from "@/lib/constants";
 import { Whiteboard } from "@/components/board/whiteboard";
 
-export const metadata = { title: "Team Setup · BenchBot" };
+export const metadata = { title: "Workspace · BenchBot" };
 
 export default async function TeamSetupPage() {
   const { user, workspace } = await requireSession();
@@ -19,7 +19,7 @@ export default async function TeamSetupPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-border bg-background px-4 py-2.5 md:px-6">
         <h1 className="font-display text-lg font-bold tracking-tight">
-          Team Setup
+          Workspace
           <span className="ml-2 align-middle text-sm font-normal text-muted-foreground">
             {workspace.name}
           </span>
