@@ -320,6 +320,9 @@ export function Whiteboard({
   }, [pushOps, toBoard]);
 
   function onWheel(e: React.WheelEvent) {
+    // Only zoom on pinch / ⌘ / Ctrl + scroll. A plain scroll/trackpad swipe does
+    // nothing, so the canvas stays still during normal use — pan deliberately
+    // with the Hand tool (H), the space bar, or a middle-mouse drag.
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const rect = surfaceRef.current!.getBoundingClientRect();
@@ -330,8 +333,6 @@ export function Whiteboard({
         const k = scale / v.scale;
         return { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k };
       });
-    } else {
-      setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
     }
   }
 
