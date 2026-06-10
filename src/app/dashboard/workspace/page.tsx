@@ -1,93 +1,34 @@
-import { Users, Plus } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { listMembers, getUser, listAudits } from "@/lib/db";
-import { PageHeader } from "@/components/dashboard/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
+import { listAudits } from "@/lib/db";
+import { auditGoalLabel } from "@/lib/constants";
+import { Whiteboard } from "@/components/board/whiteboard";
 
-export const metadata = { title: "Workspace · BenchBot" };
+export const metadata = { title: "Team Setup · BenchBot" };
 
-const ROLE_VARIANT: Record<string, "brand" | "secondary" | "violet"> = {
-  owner: "brand",
-  admin: "violet",
-  editor: "secondary",
-  viewer: "secondary",
-  client: "secondary",
-};
-
-export default async function WorkspacePage() {
-  const { workspace } = await requireSession();
-  const members = listMembers(workspace.id);
-  const auditCount = listAudits(workspace.id).length;
+export default async function TeamSetupPage() {
+  const { user, workspace } = await requireSession();
+  const audits = listAudits(workspace.id)
+    .filter((a) => a.status === "complete")
+    .map((a) => ({
+      id: a.id,
+      label: `${a.target_name} · ${auditGoalLabel(a.audit_goal)}`,
+    }));
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Workspace" description="Manage your workspace details and team." />
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Workspace details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="ws-name">Workspace name</Label>
-              <Input id="ws-name" defaultValue={workspace.name} />
-            </div>
-            <div className="flex flex-wrap gap-6 text-sm">
-              <div>
-                <p className="text-muted-foreground">Plan</p>
-                <p className="font-medium capitalize">{workspace.plan ?? "free"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Audits</p>
-                <p className="font-medium">{auditCount}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Created</p>
-                <p className="font-medium">{formatDate(workspace.created_at)}</p>
-              </div>
-            </div>
-            <Button variant="secondary" disabled>Save changes</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4 text-brand" /> Team members
-            </CardTitle>
-            <Button size="sm" variant="secondary" disabled>
-              <Plus className="h-4 w-4" /> Invite
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {members.map((m) => {
-              const u = getUser(m.user_id);
-              const initials = (u?.name || u?.email || "?").slice(0, 2).toUpperCase();
-              return (
-                <div key={m.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gradient text-xs font-semibold text-white">
-                      {initials}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{u?.name ?? "Member"}</p>
-                      <p className="text-xs text-muted-foreground">{u?.email}</p>
-                    </div>
-                  </div>
-                  <Badge variant={ROLE_VARIANT[m.role] ?? "secondary"} className="capitalize">{m.role}</Badge>
-                </div>
-              );
-            })}
-            <p className="pt-1 text-xs text-muted-foreground">Team invitations are stubbed in this MVP.</p>
-          </CardContent>
-        </Card>
+    <div className="mx-auto max-w-[1400px]">
+      <div className="mb-3">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Team Setup</h1>
+        <p className="text-sm text-muted-foreground">
+          A shared canvas for <span className="font-medium text-ink">{workspace.name}</span> — add
+          sticky notes, text, shapes and images, and work through the audit together in real time.
+        </p>
       </div>
+
+      <Whiteboard
+        workspaceId={workspace.id}
+        currentUser={{ id: user.id, name: user.name || user.email }}
+        audits={audits}
+      />
     </div>
   );
 }

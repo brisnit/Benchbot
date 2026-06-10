@@ -68,7 +68,7 @@ export function Topbar({ user, workspace }: { user: User; workspace: Workspace }
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/workspace">
-                <Settings className="h-4 w-4" /> Workspace
+                <Settings className="h-4 w-4" /> Team Setup
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

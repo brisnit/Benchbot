@@ -13,6 +13,7 @@ import type {
   Workspace,
   WorkspaceMember,
 } from "@/lib/types";
+import type { Board } from "@/lib/board/types";
 
 // ─────────────────────────────────────────────────────────────
 // File-backed, in-memory data store used in local / demo mode.
@@ -34,6 +35,7 @@ export interface DbShape {
   scores: AuditScore[];
   findings: AuditFinding[];
   reports: Report[];
+  boards: Board[];
   // userId -> lightweight password hash (local mock auth only)
   passwords: Record<string, string>;
 }
@@ -51,6 +53,7 @@ function emptyDb(): DbShape {
     scores: [],
     findings: [],
     reports: [],
+    boards: [],
     passwords: {},
   };
 }

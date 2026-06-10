@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/audits", label: "Audits", icon: ClipboardList, exact: false },
-  { href: "/dashboard/workspace", label: "Workspace", icon: Users, exact: false },
+  { href: "/dashboard/workspace", label: "Team Setup", icon: Users, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
 
