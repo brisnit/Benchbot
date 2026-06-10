@@ -118,5 +118,50 @@ export function buildSeedElements(bundle: AuditBundle): BoardElement[] {
     fontSize: 15,
   });
 
+  // Screenshots — one homepage capture per company, grouped in a frame.
+  const shotForCompany = (competitorId: string | null) => {
+    const shots = bundle.screenshots.filter((s) => s.competitor_id === competitorId);
+    return (
+      shots.find((s) => s.page_type === "homepage" && s.device_type === "desktop") ||
+      shots.find((s) => s.page_type === "homepage") ||
+      shots[0]
+    );
+  };
+  const shotCompanies = bundle.scores
+    .map((s) => ({ id: s.competitor_id, name: s.company_name, shot: shotForCompany(s.competitor_id) }))
+    .filter((c) => c.shot);
+
+  if (shotCompanies.length > 0) {
+    const shotY = sy + 260;
+    const imgW = 260;
+    const imgH = 165;
+    const stride = imgW + 28;
+    // frame around the screenshots strip
+    add({
+      type: "frame",
+      x: 24,
+      y: shotY - 52,
+      w: shotCompanies.length * stride + 24,
+      h: imgH + 110,
+      text: "📸 Screenshots",
+      color: "#3552E6",
+      fontSize: 16,
+    });
+    shotCompanies.forEach((c, i) => {
+      const x = 40 + i * stride;
+      add({ type: "text", x, y: shotY - 6, w: imgW, h: 24, text: c.name, color: "#0B1117", fontSize: 14 });
+      add({
+        type: "image",
+        x,
+        y: shotY + 22,
+        w: imgW,
+        h: imgH,
+        src: c.shot!.storage_path,
+        color: "#FFFFFF",
+        fontSize: 12,
+      });
+    });
+  }
+
   return elements;
 }

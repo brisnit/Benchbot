@@ -16,21 +16,24 @@ export default async function TeamSetupPage() {
   const members = listMembersEnriched(workspace.id);
 
   return (
-    <div className="mx-auto max-w-[1400px]">
-      <div className="mb-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Team Setup</h1>
-        <p className="text-sm text-muted-foreground">
-          A shared canvas for <span className="font-medium text-ink">{workspace.name}</span> — add
-          sticky notes, text, shapes and images, and work through the audit together in real time.
-        </p>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-border bg-background px-4 py-2.5 md:px-6">
+        <h1 className="font-display text-lg font-bold tracking-tight">
+          Team Setup
+          <span className="ml-2 align-middle text-sm font-normal text-muted-foreground">
+            {workspace.name}
+          </span>
+        </h1>
       </div>
 
-      <Whiteboard
-        workspaceId={workspace.id}
-        currentUser={{ id: user.id, name: user.name || user.email }}
-        audits={audits}
-        members={members}
-      />
+      <div className="min-h-0 flex-1">
+        <Whiteboard
+          workspaceId={workspace.id}
+          currentUser={{ id: user.id, name: user.name || user.email }}
+          audits={audits}
+          members={members}
+        />
+      </div>
     </div>
   );
 }

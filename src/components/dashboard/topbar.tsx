@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, LogOut, Plus, Settings, User as UserIcon } from "lucide-react";
+import { ChevronDown, LogOut, Plus, Settings, User as UserIcon, PanelLeft } from "lucide-react";
+import { useChrome } from "@/components/dashboard/chrome-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,18 +24,30 @@ export function Topbar({ user, workspace }: { user: User; workspace: Workspace }
     .slice(0, 2)
     .toUpperCase();
 
+  const { collapsed, toggle } = useChrome();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-8">
-      {/* mobile logo */}
-      <Link href="/dashboard" className="lg:hidden">
-        <Logo size="sm" />
-      </Link>
-
-      <div className="hidden items-center gap-2 lg:flex">
-        <span className="text-sm text-muted-foreground">Workspace</span>
-        <span className="rounded-md bg-secondary px-2.5 py-1 text-sm font-medium text-ink">
-          {workspace.name}
-        </span>
+      <div className="flex items-center gap-2">
+        {/* rail toggle — opens/closes the navigation sidebar */}
+        <button
+          onClick={toggle}
+          className="hidden h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-secondary lg:flex"
+          title={collapsed ? "Open navigation" : "Hide navigation"}
+          aria-label={collapsed ? "Open navigation" : "Hide navigation"}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+        {/* show the logo when the rail is collapsed (or on mobile) */}
+        <Link href="/dashboard" className={collapsed ? "flex" : "lg:hidden"}>
+          <Logo size="sm" />
+        </Link>
+        <div className="hidden items-center gap-2 lg:flex">
+          <span className="text-sm text-muted-foreground">Workspace</span>
+          <span className="rounded-md bg-secondary px-2.5 py-1 text-sm font-medium text-ink">
+            {workspace.name}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

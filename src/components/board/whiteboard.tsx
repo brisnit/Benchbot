@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Send,
   Check,
+  Hand,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +37,7 @@ import { cn } from "@/lib/utils";
 import { STICKY_COLORS, colorForUser } from "@/lib/board/types";
 import type { BoardElement, BoardElementType, BoardOp, CommentMsg, Presence, ShapeKind } from "@/lib/board/types";
 
-type Tool = "select" | "sticky" | "text" | "shape" | "image" | "frame" | "connector" | "comment";
+type Tool = "select" | "hand" | "sticky" | "text" | "shape" | "image" | "frame" | "connector" | "comment";
 
 interface AuditOption { id: string; label: string; }
 interface Member { id: string; user_id: string; role: string; name: string; email: string; }
@@ -81,6 +82,8 @@ export function Whiteboard({
   const [view, setView] = React.useState({ x: 80, y: 140, scale: 1 });
   const [presences, setPresences] = React.useState<Presence[]>([]);
   const [connectStart, setConnectStart] = React.useState<string | null>(null);
+  const [spaceDown, setSpaceDown] = React.useState(false);
+  const spaceRef = React.useRef(false);
 
   const surfaceRef = React.useRef<HTMLDivElement>(null);
   const pendingRef = React.useRef<Set<string>>(new Set());
@@ -171,6 +174,13 @@ export function Whiteboard({
   }, [color, shapeKind, maxZ, upsert, currentUser.id]);
 
   function onSurfaceMouseDown(e: React.MouseEvent) {
+    // Pan ONLY with the Hand tool, the space bar held, or the middle mouse
+    // button — so a normal drag never moves the whole canvas.
+    if (e.button === 1 || tool === "hand" || spaceRef.current) {
+      e.preventDefault();
+      panRef.current = { sx: e.clientX, sy: e.clientY, ox: viewRef.current.x, oy: viewRef.current.y };
+      return;
+    }
     if (e.button !== 0) return;
     const { x, y } = toBoard(e.clientX, e.clientY);
     if (tool === "sticky" || tool === "text" || tool === "shape" || tool === "frame" || tool === "comment") {
@@ -187,10 +197,10 @@ export function Whiteboard({
       setConnectStart(null); // clicking empty cancels
       return;
     }
+    // select tool on empty space → just clear selection (no panning)
     setSelectedId(null);
     setEditingId(null);
     setOpenCommentId(null);
-    panRef.current = { sx: e.clientX, sy: e.clientY, ox: viewRef.current.x, oy: viewRef.current.y };
   }
 
   function onElementMouseDown(e: React.MouseEvent, el: BoardElement) {
@@ -359,11 +369,35 @@ export function Whiteboard({
       if (e.key === "t") setTool("text");
       if (e.key === "f") setTool("frame");
       if (e.key === "c") setTool("connector");
+      if (e.key === "h") setTool("hand");
       if (e.key === "Escape") { setConnectStart(null); setTool("select"); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editingId, openCommentId, selectedId, remove]);
+
+  // Hold the space bar to temporarily pan (Figma/Miro convention).
+  React.useEffect(() => {
+    function down(e: KeyboardEvent) {
+      if (e.code !== "Space") return;
+      const t = e.target as HTMLElement | null;
+      if (editingId || openCommentId || (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA"))) return;
+      e.preventDefault();
+      spaceRef.current = true;
+      setSpaceDown(true);
+    }
+    function up(e: KeyboardEvent) {
+      if (e.code !== "Space") return;
+      spaceRef.current = false;
+      setSpaceDown(false);
+    }
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [editingId, openCommentId]);
 
   React.useEffect(() => {
     let alive = true;
@@ -430,15 +464,17 @@ export function Whiteboard({
   const connectors = all.filter((e) => e.type === "connector");
   const nodes = all.filter((e) => NODE_TYPES.has(e.type)).sort((a, b) => a.z - b.z);
   const comments = all.filter((e) => e.type === "comment");
-  const cursor = tool === "select" ? (panRef.current ? "grabbing" : "default") : "crosshair";
+  const panMode = tool === "hand" || spaceDown;
+  const cursor = panMode ? (panRef.current ? "grabbing" : "grab") : tool === "select" ? "default" : "crosshair";
   const onlineIds = new Set<string>([currentUser.id, ...presences.map((p) => p.userId)]);
   const openComment = openCommentId ? elements[openCommentId] : null;
 
   return (
-    <div className="relative h-[calc(100vh-9.5rem)] overflow-hidden rounded-xl border border-border bg-[#F4F5FA]">
+    <div className="relative h-full w-full overflow-hidden bg-[#F4F5FA]">
       {/* Toolbar */}
       <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-white px-2 py-1.5 shadow-lg">
         <ToolBtn active={tool === "select"} onClick={() => setTool("select")} label="Select (V)"><MousePointer2 className="h-4 w-4" /></ToolBtn>
+        <ToolBtn active={tool === "hand"} onClick={() => setTool("hand")} label="Pan / hand (H) — or hold Space"><Hand className="h-4 w-4" /></ToolBtn>
         <ToolBtn active={tool === "sticky"} onClick={() => setTool("sticky")} label="Sticky note (N)"><StickyNote className="h-4 w-4" /></ToolBtn>
         <ToolBtn active={tool === "text"} onClick={() => setTool("text")} label="Text (T)"><Type className="h-4 w-4" /></ToolBtn>
         <DropdownMenu>
