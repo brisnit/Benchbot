@@ -1,7 +1,21 @@
 // Collaborative board ("Team Setup") domain types.
 
-export type BoardElementType = "text" | "sticky" | "shape" | "image";
+export type BoardElementType =
+  | "text"
+  | "sticky"
+  | "shape"
+  | "image"
+  | "frame"
+  | "connector"
+  | "comment";
 export type ShapeKind = "rect" | "ellipse" | "diamond";
+
+export interface CommentMsg {
+  id: string;
+  author: string;
+  text: string;
+  at: string;
+}
 
 export interface BoardElement {
   id: string;
@@ -15,6 +29,12 @@ export interface BoardElement {
   shape?: ShapeKind;
   src?: string; // image URL
   fontSize?: number;
+  // connector
+  fromId?: string;
+  toId?: string;
+  // comment thread
+  comments?: CommentMsg[];
+  resolved?: boolean;
   z: number;
   updated_at: string;
   updated_by?: string;

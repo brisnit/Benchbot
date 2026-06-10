@@ -1,5 +1,5 @@
 import { requireSession } from "@/lib/auth";
-import { listAudits } from "@/lib/db";
+import { listAudits, listMembersEnriched } from "@/lib/db";
 import { auditGoalLabel } from "@/lib/constants";
 import { Whiteboard } from "@/components/board/whiteboard";
 
@@ -13,6 +13,7 @@ export default async function TeamSetupPage() {
       id: a.id,
       label: `${a.target_name} · ${auditGoalLabel(a.audit_goal)}`,
     }));
+  const members = listMembersEnriched(workspace.id);
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -28,6 +29,7 @@ export default async function TeamSetupPage() {
         workspaceId={workspace.id}
         currentUser={{ id: user.id, name: user.name || user.email }}
         audits={audits}
+        members={members}
       />
     </div>
   );

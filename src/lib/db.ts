@@ -9,6 +9,7 @@ import type {
   Competitor,
   CrawlResult,
   Report,
+  Role,
   Screenshot,
   Sitemap,
   User,
@@ -97,6 +98,77 @@ export function getPrimaryWorkspace(userId: string): Workspace | undefined {
 
 export function listMembers(workspaceId: string): WorkspaceMember[] {
   return getStore().db.members.filter((m) => m.workspace_id === workspaceId);
+}
+
+export interface EnrichedMember {
+  id: string;
+  user_id: string;
+  role: Role;
+  name: string;
+  email: string;
+}
+
+export function listMembersEnriched(workspaceId: string): EnrichedMember[] {
+  return listMembers(workspaceId).map((m) => {
+    const u = getUser(m.user_id);
+    return {
+      id: m.id,
+      user_id: m.user_id,
+      role: m.role,
+      name: u?.name || u?.email || "Member",
+      email: u?.email || "",
+    };
+  });
+}
+
+/** Invite (or no-op if already a member). Creates a lightweight user record for
+ *  emails not yet registered so they appear on the roster. */
+export function addMemberByEmail(
+  workspaceId: string,
+  email: string,
+  role: Role = "editor",
+): { ok: true; member: EnrichedMember } | { ok: false; error: string } {
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+  const store = getStore();
+  let user = findUserByEmail(normalized);
+  if (!user) {
+    user = {
+      id: uid("usr_"),
+      email: normalized,
+      name: normalized.split("@")[0],
+      created_at: nowIso(),
+    };
+    store.db.users.push(user);
+  }
+  const existing = store.db.members.find(
+    (m) => m.workspace_id === workspaceId && m.user_id === user!.id,
+  );
+  if (existing) return { ok: false, error: "That person is already on the team." };
+
+  const member: WorkspaceMember = {
+    id: uid("mem_"),
+    workspace_id: workspaceId,
+    user_id: user.id,
+    role,
+    created_at: nowIso(),
+  };
+  store.db.members.push(member);
+  store.persist();
+  return {
+    ok: true,
+    member: { id: member.id, user_id: user.id, role, name: user.name || user.email, email: user.email },
+  };
+}
+
+export function removeMember(workspaceId: string, memberId: string): void {
+  const store = getStore();
+  const m = store.db.members.find((x) => x.id === memberId && x.workspace_id === workspaceId);
+  if (!m || m.role === "owner") return; // never remove the owner
+  store.db.members = store.db.members.filter((x) => x.id !== memberId);
+  store.persist();
 }
 
 export function updateWorkspace(id: string, patch: Partial<Workspace>): Workspace | undefined {
