@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast";
 import { TeamPanel } from "@/components/board/team-panel";
+import { AudioRoom } from "@/components/board/audio-room";
 import { cn } from "@/lib/utils";
 import { STICKY_COLORS, colorForUser } from "@/lib/board/types";
 import type { BoardElement, BoardElementType, BoardOp, CommentMsg, Presence, ShapeKind } from "@/lib/board/types";
@@ -531,6 +532,11 @@ export function Whiteboard({
           {connectStart ? "Click a second element to connect" : "Click the first element to connect"}
         </div>
       )}
+
+      {/* Audio call dock */}
+      <div className="absolute bottom-3 left-3 z-30">
+        <AudioRoom currentUser={currentUser} />
+      </div>
 
       {/* Zoom */}
       <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 rounded-lg border border-border bg-white px-1.5 py-1 shadow-md">
