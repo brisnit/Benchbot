@@ -11,6 +11,11 @@ export const env = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   demoMode: process.env.DEMO_MODE === "true",
   enableRealCrawl: process.env.ENABLE_REAL_CRAWL === "true",
+  // LiveKit (audio calls). When unset, the workspace call falls back to a
+  // peer-to-peer mesh (good for small groups, STUN-only).
+  livekitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "",
+  livekitApiKey: process.env.LIVEKIT_API_KEY ?? "",
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? "",
 };
 
 /** True when a real Supabase project is configured. */
@@ -21,6 +26,11 @@ export function hasSupabase(): boolean {
 /** True when an OpenAI key is configured. */
 export function hasOpenAI(): boolean {
   return Boolean(env.openaiKey);
+}
+
+/** True when LiveKit is fully configured (SFU + TURN for large calls). */
+export function hasLiveKit(): boolean {
+  return Boolean(env.livekitUrl && env.livekitApiKey && env.livekitApiSecret);
 }
 
 /** Single source of truth for whether we use the local in-memory backend. */

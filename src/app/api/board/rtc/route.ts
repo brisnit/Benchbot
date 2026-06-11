@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const session = await requireApiSession();
   if (!session.ok) return session.response;
 
-  let body: { inCall?: boolean; muted?: boolean; signals?: { to: string; data: unknown }[] };
+  let body: { inCall?: boolean; muted?: boolean; hand?: boolean; signals?: { to: string; data: unknown }[] };
   try {
     body = await req.json();
   } catch {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const me = session.user.id;
   const name = session.user.name || session.user.email;
 
-  const participants = rtcHeartbeat(ws, me, name, Boolean(body.muted), Boolean(body.inCall));
+  const participants = rtcHeartbeat(ws, me, name, Boolean(body.muted), Boolean(body.hand), Boolean(body.inCall));
 
   if (Array.isArray(body.signals)) {
     for (const s of body.signals) {

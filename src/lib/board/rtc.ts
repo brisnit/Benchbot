@@ -6,6 +6,7 @@ interface CallPeer {
   userId: string;
   name: string;
   muted: boolean;
+  hand: boolean;
   lastSeen: number;
 }
 export interface Signal {
@@ -27,6 +28,7 @@ export interface Participant {
   id: string;
   name: string;
   muted: boolean;
+  hand: boolean;
 }
 
 export function rtcHeartbeat(
@@ -34,12 +36,13 @@ export function rtcHeartbeat(
   userId: string,
   name: string,
   muted: boolean,
+  hand: boolean,
   inCall: boolean,
 ): Participant[] {
   const m = store();
   if (!m.peers.has(ws)) m.peers.set(ws, new Map());
   const room = m.peers.get(ws)!;
-  if (inCall) room.set(userId, { userId, name, muted, lastSeen: Date.now() });
+  if (inCall) room.set(userId, { userId, name, muted, hand, lastSeen: Date.now() });
   else room.delete(userId);
   return rtcParticipants(ws);
 }
@@ -51,7 +54,7 @@ export function rtcParticipants(ws: string): Participant[] {
   const out: Participant[] = [];
   for (const [id, p] of room) {
     if (now - p.lastSeen > TTL) room.delete(id);
-    else out.push({ id: p.userId, name: p.name, muted: p.muted });
+    else out.push({ id: p.userId, name: p.name, muted: p.muted, hand: p.hand });
   }
   return out;
 }
