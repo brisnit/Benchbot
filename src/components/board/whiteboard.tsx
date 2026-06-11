@@ -321,9 +321,9 @@ export function Whiteboard({
   }, [pushOps, toBoard]);
 
   function onWheel(e: React.WheelEvent) {
-    // Only zoom on pinch / ⌘ / Ctrl + scroll. A plain scroll/trackpad swipe does
-    // nothing, so the canvas stays still during normal use — pan deliberately
-    // with the Hand tool (H), the space bar, or a middle-mouse drag.
+    // Pinch / ⌘ / Ctrl + scroll zooms; a plain scroll or two-finger trackpad
+    // swipe pans the canvas freely (no Hand tool needed). Dragging elements is
+    // unaffected since that uses mousedown, not wheel.
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const rect = surfaceRef.current!.getBoundingClientRect();
@@ -334,6 +334,12 @@ export function Whiteboard({
         const k = scale / v.scale;
         return { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k };
       });
+    } else {
+      // free pan: trackpads send deltaX/deltaY; shift+wheel pans horizontally on a mouse
+      let dx = e.deltaX;
+      let dy = e.deltaY;
+      if (e.shiftKey && dx === 0) { dx = dy; dy = 0; }
+      setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
     }
   }
 
