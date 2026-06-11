@@ -320,28 +320,33 @@ export function Whiteboard({
     };
   }, [pushOps, toBoard]);
 
-  function onWheel(e: React.WheelEvent) {
-    // Pinch / ⌘ / Ctrl + scroll zooms; a plain scroll or two-finger trackpad
-    // swipe pans the canvas freely (no Hand tool needed). Dragging elements is
-    // unaffected since that uses mousedown, not wheel.
-    if (e.ctrlKey || e.metaKey) {
+  // Wheel handling via a NON-passive native listener so we can preventDefault
+  // and stop the browser from scrolling/rubber-banding the whole page — only
+  // the canvas moves. Pinch/⌘+scroll zooms; plain scroll/trackpad pans.
+  React.useEffect(() => {
+    const el = surfaceRef.current;
+    if (!el) return;
+    function handler(e: WheelEvent) {
       e.preventDefault();
-      const rect = surfaceRef.current!.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-      setView((v) => {
-        const scale = Math.min(2.5, Math.max(0.2, v.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
-        const k = scale / v.scale;
-        return { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k };
-      });
-    } else {
-      // free pan: trackpads send deltaX/deltaY; shift+wheel pans horizontally on a mouse
-      let dx = e.deltaX;
-      let dy = e.deltaY;
-      if (e.shiftKey && dx === 0) { dx = dy; dy = 0; }
-      setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
+      if (e.ctrlKey || e.metaKey) {
+        const rect = el!.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        setView((v) => {
+          const scale = Math.min(2.5, Math.max(0.2, v.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+          const k = scale / v.scale;
+          return { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k };
+        });
+      } else {
+        let dx = e.deltaX;
+        let dy = e.deltaY;
+        if (e.shiftKey && dx === 0) { dx = dy; dy = 0; }
+        setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
+      }
     }
-  }
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
 
   function zoomBy(factor: number) {
     setView((v) => {
@@ -556,9 +561,15 @@ export function Whiteboard({
       <div
         ref={surfaceRef}
         className="absolute inset-0 select-none"
-        style={{ cursor, backgroundImage: "radial-gradient(#d3d8e6 1px, transparent 1px)", backgroundSize: `${24 * view.scale}px ${24 * view.scale}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
+        style={{
+          cursor,
+          touchAction: "none",
+          overscrollBehavior: "none",
+          backgroundImage: "radial-gradient(#d3d8e6 1px, transparent 1px)",
+          backgroundSize: `${24 * view.scale}px ${24 * view.scale}px`,
+          backgroundPosition: `${view.x}px ${view.y}px`,
+        }}
         onMouseDown={onSurfaceMouseDown}
-        onWheel={onWheel}
       >
         <div style={{ position: "absolute", left: 0, top: 0, transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: "0 0" }}>
           {/* frames (behind) */}
