@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, FileType, Presentation, Code2, Eye } from "lucide-react";
+import { FileText, FileType, Presentation, Code2, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/audit/copy-button";
 import { Markdown } from "@/components/audit/markdown";
@@ -12,13 +12,16 @@ export function ReportBuilder({
   executiveSummary,
   fullMarkdown,
   targetName,
+  auditId,
 }: {
   executiveSummary: string;
   fullMarkdown: string;
   targetName: string;
+  auditId: string;
 }) {
   const { toast } = useToast();
   const [view, setView] = React.useState<"formatted" | "markdown">("formatted");
+  const [exportingPptx, setExportingPptx] = React.useState(false);
 
   function exportPdf() {
     toast({
@@ -28,11 +31,27 @@ export function ReportBuilder({
     setTimeout(() => window.print(), 400);
   }
 
-  function exportPptx() {
-    toast({
-      title: "PowerPoint export is coming soon",
-      description: "This is stubbed in the MVP. Copy the markdown to use it now.",
-    });
+  async function exportPptx() {
+    setExportingPptx(true);
+    toast({ title: "Building your PowerPoint…", description: "This takes a moment." });
+    try {
+      const res = await fetch(`/api/audits/${auditId}/pptx`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${targetName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-benchbot-audit.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "PowerPoint downloaded", variant: "success" });
+    } catch {
+      toast({ title: "Couldn't export PowerPoint", description: "Please try again.", variant: "error" });
+    } finally {
+      setExportingPptx(false);
+    }
   }
 
   return (
@@ -44,8 +63,9 @@ export function ReportBuilder({
         <Button variant="secondary" size="sm" onClick={exportPdf}>
           <FileType className="h-4 w-4" /> Export PDF
         </Button>
-        <Button variant="secondary" size="sm" onClick={exportPptx}>
-          <Presentation className="h-4 w-4" /> Export PowerPoint
+        <Button variant="secondary" size="sm" onClick={exportPptx} disabled={exportingPptx}>
+          {exportingPptx ? <Loader2 className="h-4 w-4 animate-spin" /> : <Presentation className="h-4 w-4" />}
+          Export PowerPoint
         </Button>
 
         <div className="ml-auto flex rounded-lg border border-border p-0.5">

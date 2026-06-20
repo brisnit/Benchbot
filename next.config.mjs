@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Playwright must run in the Node.js runtime, not be bundled by the server build.
-  serverExternalPackages: ["playwright", "playwright-core"],
+  serverExternalPackages: ["playwright", "playwright-core", "pptxgenjs"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },

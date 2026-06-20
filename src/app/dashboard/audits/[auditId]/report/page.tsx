@@ -28,6 +28,7 @@ export default async function ReportPage({
         executiveSummary={bundle.report.executive_summary}
         fullMarkdown={bundle.report.full_report_markdown}
         targetName={bundle.audit.target_name}
+        auditId={bundle.audit.id}
       />
     </div>
   );
