@@ -1,37 +1,35 @@
 import fs from "node:fs";
 import path from "node:path";
 import PptxGenJS from "pptxgenjs";
-import { hostFromUrl } from "@/lib/utils";
+import { hostFromUrl, formatDate } from "@/lib/utils";
 import { readScreenshotFile } from "@/lib/crawler/crawl";
 import { env } from "@/lib/env";
 import type { AuditBundle, AuditScore, Screenshot } from "@/lib/types";
 
-// Builds a branded, client-ready PowerPoint deck (with charts + screenshots)
-// from an audit bundle. Returns the .pptx bytes as a Buffer.
+// Builds a branded PowerPoint deck from an audit, styled to the BenchBot deck
+// design system (pink accent, Georgia serif, navy/light editorial layouts).
 
-const BRAND = "3552E6";
-const BRAND_DK = "273FC2";
-const VIOLET = "7C5CFC";
-const INK = "0B1117";
-const INK_2 = "1B2433";
-const SLATE = "647488";
-const SLATE_LT = "94A3B8";
-const GOOD = "16C098";
-const WARN = "F5A524";
-const CRIT = "F31268";
-const LINE = "E4E7EF";
-const BG = "F6F7FB";
+// ── design tokens (reverse-engineered from the brand deck) ──
+const PINK = "FF2D72";
+const PINK_TINT = "FFE3EA";
+const INK = "111111";
+const GRAY = "6B6B6B";
+const PANEL = "F5F5F7";
+const LINE = "DDDDDD";
+const NAVY = "1F2A57";
 const WHITE = "FFFFFF";
+const SERIF = "Georgia";
+const SANS = "Arial";
 
-const SHADOW = { type: "outer" as const, color: "8A94A6", blur: 9, offset: 2, angle: 90, opacity: 0.22 };
+const SHADOW = { type: "outer" as const, color: "BBBBBB", blur: 8, offset: 2, angle: 90, opacity: 0.3 };
 
+// On-palette score colour: strong=navy, mid=gray, weak=pink (attention).
 function scoreColor(n: number): string {
-  if (n >= 75) return GOOD;
-  if (n >= 50) return WARN;
-  return CRIT;
+  if (n >= 75) return NAVY;
+  if (n >= 50) return GRAY;
+  return PINK;
 }
 
-// ── server-side image loader (disk first, then HTTP fallback) ──
 async function loadImageDataUri(storagePath: string): Promise<string | null> {
   try {
     if (storagePath.startsWith("/api/screenshot-file/")) {
@@ -60,57 +58,53 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   pptx.author = "BenchBot";
   pptx.company = "BenchBot";
   pptx.title = `${bundle.audit.target_name} — Competitive Audit`;
+  pptx.theme = { headFontFace: SERIF, bodyFontFace: SERIF };
 
   const audit = bundle.audit;
   const j = bundle.report?.report_json;
   const H = 7.5;
 
-  // ── shared template helpers ──
+  // ── template helpers ──
   let pageNo = 0;
-  function chrome(kicker: string, title: string, accent = BRAND) {
+  function chrome(kicker: string, title: string) {
     pageNo++;
     const s = pptx.addSlide();
-    s.background = { color: BG };
-    // left accent rail
-    s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.16, h: H, fill: { color: accent } });
-    // kicker + title
-    s.addText(kicker.toUpperCase(), { x: 0.6, y: 0.42, w: 11, fontSize: 11, bold: true, color: accent, charSpacing: 3 });
-    s.addText(title, { x: 0.58, y: 0.66, w: 11.5, fontSize: 26, bold: true, color: INK });
-    // rule
-    s.addShape(pptx.ShapeType.line, { x: 0.6, y: 1.42, w: 12.13, h: 0, line: { color: LINE, width: 1 } });
-    // footer
-    s.addText(`BenchBot  ·  ${audit.target_name}`, { x: 0.6, y: 7.06, w: 8, fontSize: 9, color: SLATE_LT });
-    s.addText(String(pageNo).padStart(2, "0"), { x: 12.4, y: 7.06, w: 0.5, fontSize: 9, color: SLATE_LT, align: "right" });
+    s.background = { color: WHITE };
+    s.addText(kicker.toUpperCase(), { x: 0.7, y: 0.5, w: 11, fontSize: 11, bold: true, color: PINK, charSpacing: 3, fontFace: SANS });
+    s.addText(title, { x: 0.66, y: 0.74, w: 11.8, fontSize: 30, bold: true, color: INK, fontFace: SERIF });
+    s.addShape(pptx.ShapeType.rect, { x: 0.7, y: 1.55, w: 0.9, h: 0.05, fill: { color: PINK } });
+    s.addShape(pptx.ShapeType.line, { x: 1.7, y: 1.575, w: 11.0, h: 0, line: { color: LINE, width: 1 } });
+    s.addText(`BenchBot  ·  ${audit.target_name}`, { x: 0.7, y: 7.08, w: 9, fontSize: 9, color: GRAY, fontFace: SANS });
+    s.addText(String(pageNo).padStart(2, "0"), { x: 12.3, y: 7.05, w: 0.5, fontSize: 11, color: PINK, bold: true, align: "right", fontFace: SERIF });
     return s;
   }
-  function card(s: PptxGenJS.Slide, x: number, y: number, w: number, h: number, fill = WHITE) {
-    s.addShape(pptx.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.08, fill: { color: fill }, line: { color: LINE, width: 1 }, shadow: SHADOW });
-  }
-  function chip(s: PptxGenJS.Slide, x: number, y: number, label: string, color: string) {
+  const card = (s: PptxGenJS.Slide, x: number, y: number, w: number, h: number, fill = WHITE) =>
+    s.addShape(pptx.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.06, fill: { color: fill }, line: { color: LINE, width: 1 }, shadow: SHADOW });
+  const chip = (s: PptxGenJS.Slide, x: number, y: number, label: string, color = PINK) =>
     s.addText(label.toUpperCase(), {
-      x, y, w: 2.4, h: 0.32, fontSize: 11, bold: true, color: WHITE, align: "center", valign: "middle",
-      fill: { color }, rectRadius: 0.16, shape: pptx.ShapeType.roundRect, charSpacing: 1,
+      x, y, w: 2.6, h: 0.34, fontSize: 11, bold: true, color: WHITE, align: "center", valign: "middle",
+      fill: { color }, rectRadius: 0.04, shape: pptx.ShapeType.roundRect, charSpacing: 1, fontFace: SANS,
     });
-  }
+  const bullets = (items: string[], opts: { x: number; y: number; w: number; h: number; size?: number; color?: string }) =>
+    items.map((tx) => ({ text: tx, options: { bullet: { code: "2022", indent: 16 }, fontSize: opts.size ?? 12, color: opts.color ?? INK, paraSpaceAfter: 9, fontFace: SERIF } }));
 
-  // ── 1) TITLE ──
+  // ── 1) TITLE (navy editorial) ──
   const t = pptx.addSlide();
-  t.background = { color: INK };
-  t.addShape(pptx.ShapeType.roundRect, { x: 9.2, y: -1.6, w: 6, h: 6, rectRadius: 0.3, fill: { color: BRAND, transparency: 55 }, rotate: 25 });
-  t.addShape(pptx.ShapeType.roundRect, { x: 10.6, y: 3.6, w: 5, h: 5, rectRadius: 0.3, fill: { color: VIOLET, transparency: 60 }, rotate: 18 });
-  t.addText("BENCHBOT", { x: 0.7, y: 0.6, fontSize: 14, bold: true, color: VIOLET, charSpacing: 4 });
-  t.addText(audit.target_name, { x: 0.66, y: 2.5, w: 8.5, fontSize: 50, bold: true, color: WHITE });
-  t.addText("Competitive UX Audit", { x: 0.7, y: 3.75, fontSize: 24, color: "CBD5E1" });
-  t.addText(hostFromUrl(audit.target_url), { x: 0.72, y: 4.5, fontSize: 14, color: SLATE_LT, fontFace: "Courier New" });
+  t.background = { color: NAVY };
+  t.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.28, h: H, fill: { color: PINK } });
+  t.addShape(pptx.ShapeType.ellipse, { x: 10.1, y: -2.0, w: 5.5, h: 5.5, fill: { color: PINK, transparency: 78 } });
+  t.addText("BENCHBOT", { x: 0.8, y: 0.7, fontSize: 14, bold: true, color: PINK, charSpacing: 5, fontFace: SANS });
+  t.addText(`Date: ${formatDate(audit.created_at)}`, { x: 0.82, y: 1.15, fontSize: 12, color: "AEB6CC", fontFace: SANS });
+  t.addText(audit.target_name, { x: 0.78, y: 2.55, w: 8.6, fontSize: 50, bold: true, color: WHITE, fontFace: SERIF });
+  t.addText("Competitive UX Audit", { x: 0.82, y: 3.75, fontSize: 24, italic: true, color: PINK_TINT, fontFace: SERIF });
+  t.addText(hostFromUrl(audit.target_url), { x: 0.84, y: 4.55, fontSize: 14, color: "AEB6CC", fontFace: SANS });
   if (j) {
-    t.addShape(pptx.ShapeType.ellipse, { x: 9.7, y: 2.15, w: 2.5, h: 2.5, fill: { color: INK_2 }, line: { color: scoreColor(j.overall_score), width: 3 } });
-    t.addText(String(j.overall_score), { x: 9.7, y: 2.5, w: 2.5, h: 1.4, fontSize: 60, bold: true, color: scoreColor(j.overall_score), align: "center" });
-    t.addText("OVERALL", { x: 9.7, y: 3.75, w: 2.5, fontSize: 12, color: SLATE_LT, align: "center", charSpacing: 2 });
+    t.addShape(pptx.ShapeType.ellipse, { x: 9.9, y: 2.3, w: 2.5, h: 2.5, fill: { color: NAVY }, line: { color: PINK, width: 3 } });
+    t.addText(String(j.overall_score), { x: 9.9, y: 2.62, w: 2.5, h: 1.4, fontSize: 58, bold: true, color: WHITE, align: "center", fontFace: SERIF });
+    t.addText("OVERALL", { x: 9.9, y: 3.92, w: 2.5, fontSize: 12, color: PINK_TINT, align: "center", charSpacing: 3, fontFace: SANS });
   }
 
-  if (!j) {
-    return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
-  }
+  if (!j) return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 
   const target = bundle.scores.find((s) => s.competitor_id === null) ?? bundle.scores[0];
   const comps = bundle.scores.filter((s) => s.competitor_id !== null);
@@ -120,71 +114,75 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   const compAvg = keys.map((k) => (comps.length ? Math.round(comps.reduce((a, c) => a + (c[k] as number), 0) / comps.length) : 0));
   const overallOf = (s: AuditScore) => Math.round(keys.reduce((a, k) => a + (s[k] as number), 0) / keys.length);
 
-  // ── 2) EXECUTIVE SUMMARY ──
-  const ex = chrome("Executive Summary", `${audit.target_name} scores ${j.overall_score}/100`, BRAND);
-  card(ex, 0.6, 1.75, 5.9, 4.9);
-  chip(ex, 0.85, 1.95, "Top findings", CRIT);
-  ex.addText(
-    j.top_findings.slice(0, 5).map((x) => ({ text: x, options: { bullet: { code: "2022", indent: 14 }, fontSize: 12, color: INK_2, paraSpaceAfter: 9 } })),
-    { x: 0.85, y: 2.45, w: 5.4, h: 4, valign: "top" },
-  );
-  card(ex, 6.85, 1.75, 5.9, 4.9);
-  chip(ex, 7.1, 1.95, "Top opportunities", GOOD);
-  ex.addText(
-    j.top_opportunities.slice(0, 5).map((x) => ({ text: x, options: { bullet: { code: "2022", indent: 14 }, fontSize: 12, color: INK_2, paraSpaceAfter: 9 } })),
-    { x: 7.1, y: 2.45, w: 5.4, h: 4, valign: "top" },
-  );
+  // ── 2) CONTENTS (numbered agenda) ──
+  const ag = chrome("Contents", "What's inside");
+  const agendaItems = [
+    "Executive summary", "Scores at a glance", "Competitor matrix", "Screenshots",
+    "Heuristic review", "Gaps & content", "Conversion & GEO", "Action plan",
+  ];
+  agendaItems.forEach((label, i) => {
+    const col = Math.floor(i / 4);
+    const row = i % 4;
+    const x = 0.9 + col * 6.2;
+    const y = 2.05 + row * 1.18;
+    ag.addText(String(i + 1).padStart(2, "0"), { x, y, w: 1.1, h: 0.9, fontSize: 40, bold: true, color: PINK, fontFace: SERIF });
+    ag.addText(label, { x: x + 1.2, y: y + 0.12, w: 4.6, h: 0.7, fontSize: 18, color: INK, valign: "middle", fontFace: SERIF });
+    ag.addShape(pptx.ShapeType.line, { x: x + 1.2, y: y + 0.92, w: 4.5, h: 0, line: { color: LINE, width: 1 } });
+  });
 
-  // ── 3) SCORES AT A GLANCE (charts) ──
-  const sc = chrome("Benchmark", "Scores at a glance", VIOLET);
-  card(sc, 0.6, 1.75, 6.0, 4.9);
-  sc.addText("Your dimensions vs. competitor average", { x: 0.85, y: 1.95, fontSize: 12, bold: true, color: INK });
-  sc.addChart(
+  // ── 3) EXECUTIVE SUMMARY ──
+  const ex = chrome("01 — Executive Summary", `${audit.target_name} scores ${j.overall_score} / 100`);
+  card(ex, 0.7, 1.85, 5.85, 4.85);
+  chip(ex, 0.95, 2.05, "Top findings", PINK);
+  ex.addText(bullets(j.top_findings.slice(0, 5), { x: 0.95, y: 2.55, w: 5.3, h: 4 }), { x: 0.95, y: 2.55, w: 5.35, h: 4, valign: "top" });
+  card(ex, 6.8, 1.85, 5.85, 4.85);
+  chip(ex, 7.05, 2.05, "Top opportunities", NAVY);
+  ex.addText(bullets(j.top_opportunities.slice(0, 5), { x: 7.05, y: 2.55, w: 5.3, h: 4 }), { x: 7.05, y: 2.55, w: 5.35, h: 4, valign: "top" });
+
+  // ── 4) SCORES AT A GLANCE (charts) ──
+  const scz = chrome("02 — Benchmark", "Scores at a glance");
+  card(scz, 0.7, 1.85, 5.95, 4.85, PANEL);
+  scz.addText("You vs. competitor average", { x: 0.95, y: 2.05, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
+  scz.addChart(
     pptx.ChartType.radar,
     [
       { name: target.company_name, labels: dims, values: targetVals },
       { name: "Competitor avg", labels: dims, values: compAvg },
     ],
     {
-      x: 0.7, y: 2.4, w: 5.8, h: 4.0, radarStyle: "standard",
-      chartColors: [BRAND, SLATE_LT], chartColorsOpacity: 45,
-      showLegend: true, legendPos: "b", legendFontSize: 10,
-      catAxisLabelColor: SLATE, catAxisLabelFontSize: 10, valAxisHidden: true, showValue: false,
+      x: 0.8, y: 2.5, w: 5.75, h: 4.0, radarStyle: "standard", chartColors: [PINK, GRAY], chartColorsOpacity: 40,
+      showLegend: true, legendPos: "b", legendFontSize: 10, legendFontFace: SANS,
+      catAxisLabelColor: GRAY, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 10, valAxisHidden: true, showValue: false,
     },
   );
-  card(sc, 6.85, 1.75, 5.9, 4.9);
-  sc.addText("Overall score by company", { x: 7.1, y: 1.95, fontSize: 12, bold: true, color: INK });
-  sc.addChart(
+  card(scz, 6.85, 1.85, 5.8, 4.85, PANEL);
+  scz.addText("Overall score by company", { x: 7.1, y: 2.05, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
+  scz.addChart(
     pptx.ChartType.bar,
     [{ name: "Overall", labels: bundle.scores.map((s) => s.company_name), values: bundle.scores.map(overallOf) }],
     {
-      x: 6.95, y: 2.4, w: 5.7, h: 4.0, barDir: "bar",
-      chartColors: [BRAND, VIOLET, "5B8DEF", GOOD, WARN, "E879F9", "22D3EE"],
-      showValue: true, dataLabelColor: WHITE, dataLabelFontSize: 10, dataLabelFontBold: true,
-      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0,
-      catAxisLabelColor: INK_2, catAxisLabelFontSize: 11, showLegend: false, barGapWidthPct: 40,
+      x: 6.95, y: 2.5, w: 5.6, h: 4.0, barDir: "bar", chartColors: [PINK, NAVY, "FF7AA5", "39477A", "9AA0AC", "C04A78", "5B6BA0"],
+      showValue: true, dataLabelColor: WHITE, dataLabelFontFace: SANS, dataLabelFontSize: 10, dataLabelFontBold: true,
+      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0, catAxisLabelColor: INK, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 11, showLegend: false, barGapWidthPct: 40,
     },
   );
 
-  // ── 4) COMPETITOR MATRIX (styled table) ──
-  const mx = chrome("Competitor Matrix", "How the field compares", BRAND);
+  // ── 5) COMPETITOR MATRIX ──
+  const mx = chrome("03 — Competitor Matrix", "How the field compares");
   const header = ["Company", ...dims, "Overall"].map((x) => ({
-    text: x, options: { bold: true, color: WHITE, fill: { color: INK }, align: "center" as const, valign: "middle" as const, fontSize: 12 },
+    text: x, options: { bold: true, color: WHITE, fill: { color: INK }, align: "center" as const, valign: "middle" as const, fontSize: 12, fontFace: SANS },
   }));
   const rows = bundle.scores.map((sr, i) => {
-    const fill = sr.competitor_id === null ? "EAEDFC" : i % 2 ? "FFFFFF" : "F4F6FB";
+    const fill = sr.competitor_id === null ? PINK_TINT : i % 2 ? WHITE : PANEL;
     return [
-      { text: sr.company_name, options: { bold: sr.competitor_id === null, color: INK, valign: "middle" as const, fill: { color: fill }, fontSize: 12 } },
-      ...keys.map((k) => ({ text: String(sr[k]), options: { align: "center" as const, valign: "middle" as const, color: scoreColor(sr[k] as number), bold: true, fill: { color: fill } } })),
-      { text: String(overallOf(sr)), options: { align: "center" as const, valign: "middle" as const, color: WHITE, bold: true, fill: { color: scoreColor(overallOf(sr)) } } },
+      { text: sr.company_name, options: { bold: sr.competitor_id === null, color: INK, valign: "middle" as const, fill: { color: fill }, fontSize: 12, fontFace: SERIF } },
+      ...keys.map((k) => ({ text: String(sr[k]), options: { align: "center" as const, valign: "middle" as const, color: scoreColor(sr[k] as number), bold: true, fill: { color: fill }, fontFace: SANS } })),
+      { text: String(overallOf(sr)), options: { align: "center" as const, valign: "middle" as const, color: WHITE, bold: true, fill: { color: scoreColor(overallOf(sr)) }, fontFace: SANS } },
     ];
   });
-  mx.addTable([header, ...rows], {
-    x: 0.6, y: 1.85, w: 12.13, colW: [3.13, 1.2, 1.2, 1.2, 1.2, 1.2, 1.3, 1.5],
-    border: { type: "solid", color: WHITE, pt: 2 }, rowH: 0.5, valign: "middle", fontSize: 12,
-  });
+  mx.addTable([header, ...rows], { x: 0.7, y: 1.95, w: 11.95, colW: [3.05, 1.18, 1.18, 1.18, 1.18, 1.18, 1.27, 1.55], border: { type: "solid", color: WHITE, pt: 2 }, rowH: 0.5, valign: "middle", fontSize: 12 });
 
-  // ── 5) SCREENSHOTS ──
+  // ── 6) SCREENSHOTS ──
   const shotCompanies = bundle.scores
     .map((s): { name: string; shot: Screenshot } | null => {
       const shots = bundle.screenshots.filter((x) => x.competitor_id === s.competitor_id);
@@ -195,101 +193,79 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
     .slice(0, 6);
 
   if (shotCompanies.length) {
-    const ss = chrome("Screenshots", "Homepages, side by side", VIOLET);
+    const ss = chrome("04 — Screenshots", "Homepages, side by side");
     const imgs = await Promise.all(shotCompanies.map((c) => loadImageDataUri(c.shot.storage_path)));
-    const cols = 3;
-    const cw = 3.9;
-    const ch = 2.1;
-    const gx = 0.6;
-    const gy = 1.7;
-    const padX = (12.13 - cols * cw) / (cols - 1);
+    const cols = 3, cw = 3.85, ch = 2.1, gx = 0.7, gy = 1.95;
+    const padX = (11.95 - cols * cw) / (cols - 1);
     shotCompanies.forEach((c, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = gx + col * (cw + padX);
-      const y = gy + row * (ch + 0.56);
-      card(ss, x, y, cw, ch + 0.42);
+      const x = gx + (i % cols) * (cw + padX);
+      const y = gy + Math.floor(i / cols) * (ch + 0.56);
+      card(ss, x, y, cw, ch + 0.42, PANEL);
       const data = imgs[i];
-      if (data) {
-        ss.addImage({ data, x: x + 0.12, y: y + 0.12, w: cw - 0.24, h: ch - 0.1, sizing: { type: "cover", w: cw - 0.24, h: ch - 0.1 } });
-      } else {
-        ss.addText("preview unavailable", { x, y: y + ch / 2 - 0.2, w: cw, fontSize: 10, color: SLATE_LT, align: "center" });
-      }
-      ss.addText(c.name, { x: x + 0.12, y: y + ch + 0.04, w: cw - 0.24, fontSize: 11, bold: true, color: INK });
+      if (data) ss.addImage({ data, x: x + 0.12, y: y + 0.12, w: cw - 0.24, h: ch - 0.1, sizing: { type: "cover", w: cw - 0.24, h: ch - 0.1 } });
+      else ss.addText("preview unavailable", { x, y: y + ch / 2 - 0.2, w: cw, fontSize: 10, color: GRAY, align: "center", fontFace: SANS });
+      ss.addText(c.name, { x: x + 0.14, y: y + ch + 0.05, w: cw - 0.28, fontSize: 11, bold: true, color: INK, fontFace: SERIF });
     });
   }
 
-  // ── 6) HEURISTIC REVIEW (chart + recos) ──
-  const hr = chrome("UX Heuristics", "Heuristic review", BRAND);
-  card(hr, 0.6, 1.75, 6.4, 4.9);
+  // ── 7) HEURISTIC REVIEW ──
+  const hr = chrome("05 — UX Heuristics", "Heuristic review");
+  card(hr, 0.7, 1.85, 6.4, 4.85, PANEL);
   hr.addChart(
     pptx.ChartType.bar,
     [{ name: "Score", labels: j.heuristics.map((h) => h.label), values: j.heuristics.map((h) => h.score) }],
     {
-      x: 0.7, y: 1.95, w: 6.2, h: 4.5, barDir: "bar",
-      chartColors: [VIOLET], showValue: true, dataLabelColor: WHITE, dataLabelFontBold: true, dataLabelFontSize: 9,
-      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0, catAxisLabelColor: INK_2, catAxisLabelFontSize: 9, showLegend: false, barGapWidthPct: 30,
+      x: 0.8, y: 2.05, w: 6.2, h: 4.5, barDir: "bar", chartColors: [PINK], showValue: true, dataLabelColor: WHITE, dataLabelFontFace: SANS, dataLabelFontBold: true, dataLabelFontSize: 9,
+      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0, catAxisLabelColor: INK, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 9, showLegend: false, barGapWidthPct: 30,
     },
   );
-  card(hr, 7.25, 1.75, 5.5, 4.9);
-  hr.addText("Priority fixes", { x: 7.5, y: 1.95, fontSize: 12, bold: true, color: INK });
+  card(hr, 7.35, 1.85, 5.3, 4.85);
+  hr.addText("Priority fixes", { x: 7.6, y: 2.05, fontSize: 13, bold: true, color: PINK, fontFace: SERIF });
   const lowest = [...j.heuristics].sort((a, b) => a.score - b.score).slice(0, 4);
   hr.addText(
-    lowest.map((h) => ({ text: `${h.label} (${h.score}) — ${h.recommendation}`, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11, color: INK_2, paraSpaceAfter: 10 } })),
-    { x: 7.5, y: 2.4, w: 5.05, h: 4, valign: "top" },
+    lowest.map((h) => ({ text: `${h.label} (${h.score}) — ${h.recommendation}`, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11, color: INK, paraSpaceAfter: 10, fontFace: SERIF } })),
+    { x: 7.6, y: 2.5, w: 4.85, h: 4, valign: "top" },
   );
 
-  // ── 7) GAPS + CONTENT ──
-  const gp = chrome("Gaps", "Where you're losing ground", WARN);
-  card(gp, 0.6, 1.75, 5.9, 4.9);
-  chip(gp, 0.85, 1.95, "Biggest gaps", WARN);
+  // ── 8) GAPS & CONTENT ──
+  const gp = chrome("06 — Gaps", "Where you're losing ground");
+  card(gp, 0.7, 1.85, 5.85, 4.85);
+  chip(gp, 0.95, 2.05, "Biggest gaps", PINK);
+  gp.addText(bullets(j.biggest_gaps, { x: 0.95, y: 2.6, w: 5.3, h: 4 }), { x: 0.95, y: 2.6, w: 5.35, h: 4, valign: "top" });
+  card(gp, 6.8, 1.85, 5.85, 4.85);
+  chip(gp, 7.05, 2.05, "Content gaps", NAVY);
   gp.addText(
-    j.biggest_gaps.map((x) => ({ text: x, options: { bullet: { code: "2022", indent: 14 }, fontSize: 12, color: INK_2, paraSpaceAfter: 10 } })),
-    { x: 0.85, y: 2.5, w: 5.4, h: 4, valign: "top" },
-  );
-  card(gp, 6.85, 1.75, 5.9, 4.9);
-  chip(gp, 7.1, 1.95, "Content gaps", VIOLET);
-  gp.addText(
-    j.content_gaps.map((g) => ({ text: `${g.topic} — ${g.opportunity}`, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11.5, color: INK_2, paraSpaceAfter: 10 } })),
-    { x: 7.1, y: 2.5, w: 5.4, h: 4, valign: "top" },
+    j.content_gaps.map((g) => ({ text: `${g.topic} — ${g.opportunity}`, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11.5, color: INK, paraSpaceAfter: 10, fontFace: SERIF } })),
+    { x: 7.05, y: 2.6, w: 5.35, h: 4, valign: "top" },
   );
 
-  // ── 8) CONVERSION & AI VISIBILITY ──
-  const cv = chrome("Conversion & GEO", "Convert more, get cited by AI", BRAND);
-  const conv = j.conversion_audit;
-  const ai = j.ai_visibility;
-  card(cv, 0.6, 1.75, 5.9, 4.9);
-  chip(cv, 0.85, 1.95, "Conversion", BRAND);
-  cv.addText(
-    [conv.cta_clarity, conv.form_length, conv.contact_flow, conv.trust_signals, conv.lead_magnets].map((x) => ({ text: x, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11.5, color: INK_2, paraSpaceAfter: 9 } })),
-    { x: 0.85, y: 2.5, w: 5.4, h: 4, valign: "top" },
-  );
-  card(cv, 6.85, 1.75, 5.9, 4.9);
-  chip(cv, 7.1, 1.95, "AI / GEO visibility", VIOLET);
-  cv.addText(
-    [ai.schema_markup, ai.metadata, ai.faq_schema, ai.crawlability, ai.llm_clarity].map((x) => ({ text: x, options: { bullet: { code: "2022", indent: 14 }, fontSize: 11.5, color: INK_2, paraSpaceAfter: 9 } })),
-    { x: 7.1, y: 2.5, w: 5.4, h: 4, valign: "top" },
-  );
+  // ── 9) CONVERSION & GEO ──
+  const cv = chrome("07 — Conversion & GEO", "Convert more, get cited by AI");
+  const conv = j.conversion_audit, ai = j.ai_visibility;
+  card(cv, 0.7, 1.85, 5.85, 4.85);
+  chip(cv, 0.95, 2.05, "Conversion", PINK);
+  cv.addText(bullets([conv.cta_clarity, conv.form_length, conv.contact_flow, conv.trust_signals, conv.lead_magnets], { x: 0.95, y: 2.6, w: 5.3, h: 4, size: 11.5 }), { x: 0.95, y: 2.6, w: 5.35, h: 4, valign: "top" });
+  card(cv, 6.8, 1.85, 5.85, 4.85);
+  chip(cv, 7.05, 2.05, "AI / GEO visibility", NAVY);
+  cv.addText(bullets([ai.schema_markup, ai.metadata, ai.faq_schema, ai.crawlability, ai.llm_clarity], { x: 7.05, y: 2.6, w: 5.3, h: 4, size: 11.5 }), { x: 7.05, y: 2.6, w: 5.35, h: 4, valign: "top" });
 
-  // ── 9) NEXT STEPS (numbered cards) ──
-  const ns = chrome("Action Plan", "Recommended next steps", GOOD);
-  const steps = j.next_steps.slice(0, 5);
-  steps.forEach((step, i) => {
-    const y = 1.8 + i * 0.98;
-    card(ns, 0.6, y, 12.13, 0.82, WHITE);
-    ns.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.16, w: 0.5, h: 0.5, fill: { color: i === 0 ? BRAND : INK } });
-    ns.addText(String(i + 1), { x: 0.85, y: y + 0.16, w: 0.5, h: 0.5, fontSize: 18, bold: true, color: WHITE, align: "center", valign: "middle" });
-    ns.addText(step, { x: 1.6, y: y + 0.04, w: 10.9, h: 0.74, fontSize: 14, color: INK_2, valign: "middle" });
+  // ── 10) ACTION PLAN (numbered editorial) ──
+  const ns = chrome("08 — Action Plan", "Recommended next steps");
+  j.next_steps.slice(0, 5).forEach((step, i) => {
+    const y = 1.95 + i * 0.96;
+    ns.addText(String(i + 1).padStart(2, "0"), { x: 0.7, y, w: 1.0, h: 0.8, fontSize: 34, bold: true, color: i === 0 ? PINK : GRAY, fontFace: SERIF, valign: "middle" });
+    ns.addShape(pptx.ShapeType.line, { x: 1.75, y: y + 0.05, w: 0, h: 0.7, line: { color: LINE, width: 1 } });
+    ns.addText(step, { x: 2.0, y, w: 10.6, h: 0.8, fontSize: 15, color: INK, valign: "middle", fontFace: SERIF });
   });
 
-  // ── 10) CLOSING ──
+  // ── 11) CLOSING (pink) ──
   const cl = pptx.addSlide();
-  cl.background = { color: INK };
-  cl.addShape(pptx.ShapeType.roundRect, { x: -1.5, y: 4.6, w: 6, h: 5, rectRadius: 0.3, fill: { color: BRAND_DK, transparency: 55 }, rotate: 20 });
-  cl.addText("BENCHBOT", { x: 0.7, y: 0.6, fontSize: 14, bold: true, color: VIOLET, charSpacing: 4 });
-  cl.addText("Benchmark anything.", { x: 0.66, y: 2.9, w: 11, fontSize: 44, bold: true, color: WHITE });
-  cl.addText("Days of competitive research, distilled into a client-ready report.", { x: 0.7, y: 4.0, fontSize: 16, color: "CBD5E1" });
-  cl.addText("Generated by BenchBot — figures in this report are AI-estimated.", { x: 0.72, y: 6.7, fontSize: 11, color: SLATE });
+  cl.background = { color: PINK };
+  cl.addShape(pptx.ShapeType.ellipse, { x: -1.8, y: 4.4, w: 6, h: 6, fill: { color: WHITE, transparency: 88 } });
+  cl.addText("BENCHBOT", { x: 0.8, y: 0.7, fontSize: 14, bold: true, color: WHITE, charSpacing: 5, fontFace: SANS });
+  cl.addText("Benchmark anything.", { x: 0.76, y: 2.8, w: 11.5, fontSize: 46, bold: true, color: WHITE, fontFace: SERIF });
+  cl.addText("Days of competitive research, distilled into a client-ready report.", { x: 0.8, y: 4.0, fontSize: 17, italic: true, color: "FFE3EA", fontFace: SERIF });
+  cl.addText("Generated by BenchBot — figures in this report are AI-estimated.", { x: 0.82, y: 6.7, fontSize: 11, color: "FFD0DD", fontFace: SANS });
 
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 }
