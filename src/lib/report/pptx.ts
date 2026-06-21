@@ -87,6 +87,13 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
     });
   const bullets = (items: string[], opts: { x: number; y: number; w: number; h: number; size?: number; color?: string }) =>
     items.map((tx) => ({ text: tx, options: { bullet: { code: "2022", indent: 16 }, fontSize: opts.size ?? 12, color: opts.color ?? INK, paraSpaceAfter: 9, fontFace: SERIF } }));
+  // Shape-based bars (render reliably in PowerPoint, Keynote AND Google Slides,
+  // unlike native chart objects which can come up blank outside PowerPoint).
+  const bar = (s: PptxGenJS.Slide, x: number, y: number, w: number, h: number, val: number, color: string, max = 100) => {
+    s.addShape(pptx.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.02, fill: { color: "EAEAEE" } });
+    const fw = Math.max(0.06, (w * Math.max(0, Math.min(max, val))) / max);
+    s.addShape(pptx.ShapeType.roundRect, { x, y, w: fw, h, rectRadius: 0.02, fill: { color } });
+  };
 
   // ── 1) TITLE (navy editorial) ──
   const t = pptx.addSlide();
@@ -139,33 +146,40 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   chip(ex, 7.05, 2.05, "Top opportunities", NAVY);
   ex.addText(bullets(j.top_opportunities.slice(0, 5), { x: 7.05, y: 2.55, w: 5.3, h: 4 }), { x: 7.05, y: 2.55, w: 5.35, h: 4, valign: "top" });
 
-  // ── 4) SCORES AT A GLANCE (charts) ──
+  // ── 4) SCORES AT A GLANCE (shape bars) ──
   const scz = chrome("02 — Benchmark", "Scores at a glance");
+  // left: your dimensions vs competitor average
   card(scz, 0.7, 1.85, 5.95, 4.85, PANEL);
-  scz.addText("You vs. competitor average", { x: 0.95, y: 2.05, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
-  scz.addChart(
-    pptx.ChartType.radar,
-    [
-      { name: target.company_name, labels: dims, values: targetVals },
-      { name: "Competitor avg", labels: dims, values: compAvg },
-    ],
-    {
-      x: 0.8, y: 2.5, w: 5.75, h: 4.0, radarStyle: "standard", chartColors: [PINK, GRAY], chartColorsOpacity: 40,
-      showLegend: true, legendPos: "b", legendFontSize: 10, legendFontFace: SANS,
-      catAxisLabelColor: GRAY, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 10, valAxisHidden: true, showValue: false,
-    },
-  );
+  scz.addText("You vs. competitor average", { x: 0.95, y: 2.05, w: 5.4, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
+  scz.addShape(pptx.ShapeType.rect, { x: 0.95, y: 2.5, w: 0.18, h: 0.14, fill: { color: PINK } });
+  scz.addText(target.company_name, { x: 1.18, y: 2.42, w: 2.2, fontSize: 9, color: INK, fontFace: SANS });
+  scz.addShape(pptx.ShapeType.rect, { x: 3.5, y: 2.5, w: 0.18, h: 0.14, fill: { color: GRAY } });
+  scz.addText("Competitor avg", { x: 3.73, y: 2.42, w: 2.4, fontSize: 9, color: INK, fontFace: SANS });
+  let dy = 2.95;
+  dims.forEach((d, i) => {
+    scz.addText(d, { x: 0.95, y: dy + 0.06, w: 1.05, h: 0.4, fontSize: 9, bold: true, color: INK, fontFace: SANS, valign: "middle" });
+    const bx = 2.05, bw = 3.35;
+    bar(scz, bx, dy, bw, 0.16, targetVals[i], PINK);
+    scz.addText(String(targetVals[i]), { x: bx + bw + 0.08, y: dy - 0.04, w: 0.5, fontSize: 9, bold: true, color: PINK, fontFace: SANS });
+    bar(scz, bx, dy + 0.22, bw, 0.16, compAvg[i], GRAY);
+    scz.addText(String(compAvg[i]), { x: bx + bw + 0.08, y: dy + 0.18, w: 0.5, fontSize: 9, color: GRAY, fontFace: SANS });
+    dy += 0.61;
+  });
+  // right: overall score by company
   card(scz, 6.85, 1.85, 5.8, 4.85, PANEL);
-  scz.addText("Overall score by company", { x: 7.1, y: 2.05, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
-  scz.addChart(
-    pptx.ChartType.bar,
-    [{ name: "Overall", labels: bundle.scores.map((s) => s.company_name), values: bundle.scores.map(overallOf) }],
-    {
-      x: 6.95, y: 2.5, w: 5.6, h: 4.0, barDir: "bar", chartColors: [PINK, NAVY, "FF7AA5", "39477A", "9AA0AC", "C04A78", "5B6BA0"],
-      showValue: true, dataLabelColor: WHITE, dataLabelFontFace: SANS, dataLabelFontSize: 10, dataLabelFontBold: true,
-      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0, catAxisLabelColor: INK, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 11, showLegend: false, barGapWidthPct: 40,
-    },
-  );
+  scz.addText("Overall score by company", { x: 7.1, y: 2.05, w: 5.3, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
+  const companies = bundle.scores;
+  const rowH = Math.min(0.66, 4.0 / companies.length);
+  let oy = 2.65;
+  companies.forEach((s) => {
+    const ov = overallOf(s);
+    const isT = s.competitor_id === null;
+    scz.addText(s.company_name, { x: 7.1, y: oy, w: 2.0, h: rowH, fontSize: 10, bold: isT, color: INK, fontFace: SANS, valign: "middle" });
+    const bx = 9.15, bw = 2.75;
+    bar(scz, bx, oy + rowH / 2 - 0.11, bw, 0.22, ov, isT ? PINK : NAVY);
+    scz.addText(String(ov), { x: bx + bw + 0.1, y: oy, w: 0.55, h: rowH, fontSize: 12, bold: true, color: isT ? PINK : NAVY, fontFace: SANS, valign: "middle" });
+    oy += rowH;
+  });
 
   // ── 5) COMPETITOR MATRIX ──
   const mx = chrome("03 — Competitor Matrix", "How the field compares");
@@ -211,14 +225,15 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   // ── 7) HEURISTIC REVIEW ──
   const hr = chrome("05 — UX Heuristics", "Heuristic review");
   card(hr, 0.7, 1.85, 6.4, 4.85, PANEL);
-  hr.addChart(
-    pptx.ChartType.bar,
-    [{ name: "Score", labels: j.heuristics.map((h) => h.label), values: j.heuristics.map((h) => h.score) }],
-    {
-      x: 0.8, y: 2.05, w: 6.2, h: 4.5, barDir: "bar", chartColors: [PINK], showValue: true, dataLabelColor: WHITE, dataLabelFontFace: SANS, dataLabelFontBold: true, dataLabelFontSize: 9,
-      valAxisHidden: true, valAxisMaxVal: 100, valAxisMinVal: 0, catAxisLabelColor: INK, catAxisLabelFontFace: SANS, catAxisLabelFontSize: 9, showLegend: false, barGapWidthPct: 30,
-    },
-  );
+  let hy = 2.12;
+  const hStep = 4.3 / j.heuristics.length;
+  j.heuristics.forEach((h) => {
+    hr.addText(h.label, { x: 0.95, y: hy, w: 1.95, h: hStep, fontSize: 9, color: INK, fontFace: SANS, valign: "middle" });
+    const bx = 2.95, bw = 2.55;
+    bar(hr, bx, hy + hStep / 2 - 0.09, bw, 0.18, h.score, scoreColor(h.score));
+    hr.addText(String(h.score), { x: bx + bw + 0.1, y: hy, w: 0.5, h: hStep, fontSize: 10, bold: true, color: scoreColor(h.score), fontFace: SANS, valign: "middle" });
+    hy += hStep;
+  });
   card(hr, 7.35, 1.85, 5.3, 4.85);
   hr.addText("Priority fixes", { x: 7.6, y: 2.05, fontSize: 13, bold: true, color: PINK, fontFace: SERIF });
   const lowest = [...j.heuristics].sort((a, b) => a.score - b.score).slice(0, 4);
