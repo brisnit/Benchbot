@@ -132,26 +132,21 @@
   height: 26px;
 }
 
-/* Print only the sitemap when saving it to PDF */
+/* Dedicated sitemap print page: landscape, hide on-screen-only controls */
 @media print {
-  body.printing-sitemap * {
-    visibility: hidden;
+  body.sitemap-print-page {
+    background: #fff;
   }
-  body.printing-sitemap #sitemap-print,
-  body.printing-sitemap #sitemap-print * {
-    visibility: visible;
+  body.sitemap-print-page .print\:hidden {
+    display: none !important;
   }
-  body.printing-sitemap #sitemap-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0;
-  }
-  body.printing-sitemap .sitemap-noprint {
+  body.sitemap-print-page aside,
+  body.sitemap-print-page header,
+  body.sitemap-print-page nav {
     display: none !important;
   }
 }
 @page {
   size: landscape;
+  margin: 10mm;
 }

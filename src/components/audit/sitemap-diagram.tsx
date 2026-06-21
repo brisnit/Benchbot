@@ -122,34 +122,34 @@ export function SitemapDiagram({
   pageCount,
   depth,
   host,
-  printable = false,
+  print = false,
   showSavePdf = false,
+  printHref,
 }: {
   tree: SitemapNode;
   pageCount?: number;
   depth?: number;
   host?: string;
-  printable?: boolean;
+  print?: boolean;
   showSavePdf?: boolean;
+  printHref?: string;
 }) {
   const sections = tree.children ?? [];
 
   function savePdf() {
-    document.body.classList.add("printing-sitemap");
-    const cleanup = () => {
-      document.body.classList.remove("printing-sitemap");
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    // Safari fallback if afterprint doesn't fire.
-    setTimeout(cleanup, 1500);
+    // Open a clean, dedicated print page (printing the modal DOM yields blank
+    // pages because of the dialog's fixed/transformed/overflow container).
+    if (printHref) {
+      window.open(printHref, "_blank", "noopener");
+    } else {
+      window.print();
+    }
   }
 
   return (
     <div>
       {showSavePdf && (
-        <div className="sitemap-noprint mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end">
           <Button variant="secondary" size="sm" onClick={savePdf}>
             <Download className="h-4 w-4" /> Save PDF
           </Button>
@@ -157,8 +157,11 @@ export function SitemapDiagram({
       )}
 
       <div
-        id={printable ? "sitemap-print" : undefined}
-        className="overflow-x-auto rounded-xl border border-border bg-[#FAFBFE] p-6 scrollbar-thin"
+        className={
+          print
+            ? "p-2"
+            : "overflow-x-auto rounded-xl border border-border bg-[#FAFBFE] p-6 scrollbar-thin"
+        }
       >
         {/* Print header (only visible when printing) */}
         <div className="mb-4 hidden items-center justify-between print:flex">

@@ -55,8 +55,8 @@ export function SitemapGallery({ items }: { items: SitemapItem[] }) {
                 pageCount={active.sitemap.page_count}
                 depth={active.sitemap.depth}
                 host={active.host}
-                printable
                 showSavePdf
+                printHref={`/sitemap-print/${active.sitemap.audit_id}?c=${active.sitemap.competitor_id ?? "target"}`}
               />
             </>
           )}
