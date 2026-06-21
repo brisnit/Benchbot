@@ -1,10 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
 import PptxGenJS from "pptxgenjs";
 import { hostFromUrl, formatDate } from "@/lib/utils";
-import { readScreenshotFile } from "@/lib/crawler/crawl";
-import { env } from "@/lib/env";
-import type { AuditBundle, AuditScore, Screenshot } from "@/lib/types";
+import type { AuditBundle, AuditScore } from "@/lib/types";
 
 // Builds a branded PowerPoint deck from an audit, styled to the BenchBot deck
 // design system (pink accent, Georgia serif, navy/light editorial layouts).
@@ -28,28 +24,6 @@ function scoreColor(n: number): string {
   if (n >= 75) return NAVY;
   if (n >= 50) return GRAY;
   return PINK;
-}
-
-async function loadImageDataUri(storagePath: string): Promise<string | null> {
-  try {
-    if (storagePath.startsWith("/api/screenshot-file/")) {
-      const name = decodeURIComponent(storagePath.split("/").pop() || "");
-      const buf = readScreenshotFile(name);
-      return buf ? `data:image/png;base64,${buf.toString("base64")}` : null;
-    }
-    if (storagePath.startsWith("/example/")) {
-      const file = path.join(process.cwd(), "public", storagePath.replace(/^\//, ""));
-      return fs.existsSync(file) ? `data:image/png;base64,${fs.readFileSync(file).toString("base64")}` : null;
-    }
-    const url = storagePath.startsWith("http") ? storagePath : `${env.appUrl}${storagePath}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") || "image/png";
-    const b64 = Buffer.from(await res.arrayBuffer()).toString("base64");
-    return `data:${ct};base64,${b64}`;
-  } catch {
-    return null;
-  }
 }
 
 export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
@@ -124,7 +98,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   // ── 2) CONTENTS (numbered agenda) ──
   const ag = chrome("Contents", "What's inside");
   const agendaItems = [
-    "Executive summary", "Scores at a glance", "Competitor matrix", "Screenshots",
+    "Executive summary", "Scores at a glance", "Competitor matrix",
     "Heuristic review", "Gaps & content", "Conversion & GEO", "Action plan",
   ];
   agendaItems.forEach((label, i) => {
@@ -196,34 +170,8 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   });
   mx.addTable([header, ...rows], { x: 0.7, y: 1.95, w: 11.95, colW: [3.05, 1.18, 1.18, 1.18, 1.18, 1.18, 1.27, 1.55], border: { type: "solid", color: WHITE, pt: 2 }, rowH: 0.5, valign: "middle", fontSize: 12 });
 
-  // ── 6) SCREENSHOTS ──
-  const shotCompanies = bundle.scores
-    .map((s): { name: string; shot: Screenshot } | null => {
-      const shots = bundle.screenshots.filter((x) => x.competitor_id === s.competitor_id);
-      const shot = shots.find((x) => x.page_type === "homepage" && x.device_type === "desktop") || shots.find((x) => x.page_type === "homepage") || shots[0];
-      return shot ? { name: s.company_name, shot } : null;
-    })
-    .filter((x): x is { name: string; shot: Screenshot } => x !== null)
-    .slice(0, 6);
-
-  if (shotCompanies.length) {
-    const ss = chrome("04 — Screenshots", "Homepages, side by side");
-    const imgs = await Promise.all(shotCompanies.map((c) => loadImageDataUri(c.shot.storage_path)));
-    const cols = 3, cw = 3.85, ch = 2.1, gx = 0.7, gy = 1.95;
-    const padX = (11.95 - cols * cw) / (cols - 1);
-    shotCompanies.forEach((c, i) => {
-      const x = gx + (i % cols) * (cw + padX);
-      const y = gy + Math.floor(i / cols) * (ch + 0.56);
-      card(ss, x, y, cw, ch + 0.42, PANEL);
-      const data = imgs[i];
-      if (data) ss.addImage({ data, x: x + 0.12, y: y + 0.12, w: cw - 0.24, h: ch - 0.1, sizing: { type: "cover", w: cw - 0.24, h: ch - 0.1 } });
-      else ss.addText("preview unavailable", { x, y: y + ch / 2 - 0.2, w: cw, fontSize: 10, color: GRAY, align: "center", fontFace: SANS });
-      ss.addText(c.name, { x: x + 0.14, y: y + ch + 0.05, w: cw - 0.28, fontSize: 11, bold: true, color: INK, fontFace: SERIF });
-    });
-  }
-
-  // ── 7) HEURISTIC REVIEW ──
-  const hr = chrome("05 — UX Heuristics", "Heuristic review");
+  // ── 4) HEURISTIC REVIEW — overview ──
+  const hr = chrome("04 — UX Heuristics", "Heuristic review");
   card(hr, 0.7, 1.85, 6.4, 4.85, PANEL);
   let hy = 2.12;
   const hStep = 4.3 / j.heuristics.length;
@@ -242,8 +190,25 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
     { x: 7.6, y: 2.5, w: 4.85, h: 4, valign: "top" },
   );
 
-  // ── 8) GAPS & CONTENT ──
-  const gp = chrome("06 — Gaps", "Where you're losing ground");
+  // ── 4b) HEURISTIC REVIEW — full detail (every heuristic: score, evidence, fix) ──
+  const heuHalf = Math.ceil(j.heuristics.length / 2);
+  [j.heuristics.slice(0, heuHalf), j.heuristics.slice(heuHalf)].forEach((group, gi) => {
+    if (!group.length) return;
+    const hd = chrome("04 — UX Heuristics", `Detailed findings  (${gi + 1}/2)`);
+    let yy = 1.92;
+    group.forEach((h) => {
+      card(hd, 0.7, yy, 11.95, 0.94);
+      hd.addShape(pptx.ShapeType.roundRect, { x: 0.9, y: yy + 0.18, w: 0.85, h: 0.58, rectRadius: 0.06, fill: { color: scoreColor(h.score) } });
+      hd.addText(String(h.score), { x: 0.9, y: yy + 0.18, w: 0.85, h: 0.58, fontSize: 20, bold: true, color: WHITE, align: "center", valign: "middle", fontFace: SERIF });
+      hd.addText(h.label, { x: 1.95, y: yy + 0.07, w: 10.6, fontSize: 13, bold: true, color: INK, fontFace: SERIF });
+      hd.addText([{ text: "Evidence   ", options: { bold: true, color: PINK, fontFace: SANS, fontSize: 8.5 } }, { text: h.evidence, options: { color: GRAY, fontFace: SANS, fontSize: 8.5 } }], { x: 1.95, y: yy + 0.39, w: 10.55, h: 0.24, valign: "top" });
+      hd.addText([{ text: "Fix   ", options: { bold: true, color: NAVY, fontFace: SANS, fontSize: 8.5 } }, { text: h.recommendation, options: { color: INK, fontFace: SANS, fontSize: 8.5 } }], { x: 1.95, y: yy + 0.63, w: 10.55, h: 0.24, valign: "top" });
+      yy += 1.02;
+    });
+  });
+
+  // ── 5) GAPS & CONTENT ──
+  const gp = chrome("05 — Gaps", "Where you're losing ground");
   card(gp, 0.7, 1.85, 5.85, 4.85);
   chip(gp, 0.95, 2.05, "Biggest gaps", PINK);
   gp.addText(bullets(j.biggest_gaps, { x: 0.95, y: 2.6, w: 5.3, h: 4 }), { x: 0.95, y: 2.6, w: 5.35, h: 4, valign: "top" });
@@ -255,7 +220,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   );
 
   // ── 9) CONVERSION & GEO ──
-  const cv = chrome("07 — Conversion & GEO", "Convert more, get cited by AI");
+  const cv = chrome("06 — Conversion & GEO", "Convert more, get cited by AI");
   const conv = j.conversion_audit, ai = j.ai_visibility;
   card(cv, 0.7, 1.85, 5.85, 4.85);
   chip(cv, 0.95, 2.05, "Conversion", PINK);
@@ -265,7 +230,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   cv.addText(bullets([ai.schema_markup, ai.metadata, ai.faq_schema, ai.crawlability, ai.llm_clarity], { x: 7.05, y: 2.6, w: 5.3, h: 4, size: 11.5 }), { x: 7.05, y: 2.6, w: 5.35, h: 4, valign: "top" });
 
   // ── 10) ACTION PLAN (numbered editorial) ──
-  const ns = chrome("08 — Action Plan", "Recommended next steps");
+  const ns = chrome("07 — Action Plan", "Recommended next steps");
   j.next_steps.slice(0, 5).forEach((step, i) => {
     const y = 1.95 + i * 0.96;
     ns.addText(String(i + 1).padStart(2, "0"), { x: 0.7, y, w: 1.0, h: 0.8, fontSize: 34, bold: true, color: i === 0 ? PINK : GRAY, fontFace: SERIF, valign: "middle" });
