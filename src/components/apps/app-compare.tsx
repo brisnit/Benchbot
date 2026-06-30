@@ -7,8 +7,8 @@ import {
   Plus,
   X,
   Loader2,
-  Smartphone,
   Sparkles,
+  Wand2,
   ExternalLink,
   Crown,
   Trophy,
@@ -49,6 +49,7 @@ export function AppCompare() {
   const [selected, setSelected] = React.useState<AppInfo[]>([]);
   const [targetId, setTargetId] = React.useState<number | null>(null);
   const [comparing, setComparing] = React.useState(false);
+  const [discovering, setDiscovering] = React.useState(false);
   const [data, setData] = React.useState<{ target: AppInfo; competitors: AppInfo[]; apps: AppInfo[]; comparison: AppComparison } | null>(null);
 
   // debounced search
@@ -78,6 +79,37 @@ export function AppCompare() {
   function removeApp(id: number) {
     setSelected((prev) => prev.filter((s) => s.id !== id));
     if (targetId === id) setTargetId((prev) => (selected.find((s) => s.id !== id)?.id ?? null) || null);
+  }
+
+  async function findCompetitors() {
+    if (targetId == null) { toast({ title: "Add an app first", variant: "error" }); return; }
+    setDiscovering(true);
+    try {
+      const res = await fetch("/api/apps/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: targetId, country }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
+      const d: { apps: AppInfo[]; source: "ai" | "category" } = await res.json();
+      let added = 0;
+      setSelected((prev) => {
+        const ids = new Set(prev.map((s) => s.id));
+        const room = 6 - prev.length;
+        const toAdd = d.apps.filter((a) => !ids.has(a.id)).slice(0, Math.max(0, room));
+        added = toAdd.length;
+        return [...prev, ...toAdd];
+      });
+      toast({
+        title: added ? `Added ${added} competitor${added === 1 ? "" : "s"}` : "No new competitors found",
+        description: d.source === "ai" ? "Suggested by AI from the App Store." : "Top apps in the same category.",
+        variant: added ? "success" : "default",
+      });
+    } catch (e) {
+      toast({ title: "Couldn't find competitors", description: (e as Error).message, variant: "error" });
+    } finally {
+      setDiscovering(false);
+    }
   }
 
   async function compare() {
@@ -145,6 +177,10 @@ export function AppCompare() {
           >
             {COUNTRIES.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
           </select>
+          <Button variant="secondary" onClick={findCompetitors} disabled={discovering || targetId == null}>
+            {discovering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            Find competitors
+          </Button>
           <Button variant="gradient" onClick={compare} disabled={comparing || selected.length < 2}>
             {comparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             Compare apps
@@ -169,7 +205,7 @@ export function AppCompare() {
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Search and add 2–6 apps. The first becomes the “target”; click <em>set target</em> to change it.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Add your app, then hit <strong>Find competitors</strong> to let BenchBot suggest rivals — or add 2–6 apps yourself. The first becomes the “target”; click <em>set target</em> to change it.</p>
         )}
       </Card>
 
