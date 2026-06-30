@@ -1,5 +1,6 @@
 import { getStore } from "@/lib/store/local-store";
 import { uid } from "@/lib/utils";
+import type { AppComparisonRecord } from "@/lib/apps/record";
 import type {
   Audit,
   AuditBundle,
@@ -327,6 +328,50 @@ export function upsertReport(auditId: string, report: Omit<Report, "id" | "creat
 
 export function getReport(auditId: string): Report | null {
   return getStore().db.reports.find((r) => r.audit_id === auditId) ?? null;
+}
+
+// ---------- App comparisons ----------
+
+export function createOrUpdateAppComparison(
+  input: Omit<AppComparisonRecord, "id" | "created_at" | "updated_at">,
+): AppComparisonRecord {
+  const store = getStore();
+  const key = [...input.apps.map((a) => a.id)].sort((a, b) => a - b).join(",");
+  const existing = store.db.appComparisons.find(
+    (r) =>
+      r.workspace_id === input.workspace_id &&
+      [...r.apps.map((a) => a.id)].sort((a, b) => a - b).join(",") === key,
+  );
+  if (existing) {
+    Object.assign(existing, input, { updated_at: nowIso() });
+    store.persist();
+    return existing;
+  }
+  const record: AppComparisonRecord = {
+    ...input,
+    id: uid("app_"),
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  };
+  store.db.appComparisons.push(record);
+  store.persist();
+  return record;
+}
+
+export function getAppComparison(id: string): AppComparisonRecord | undefined {
+  return getStore().db.appComparisons.find((r) => r.id === id);
+}
+
+export function listAppComparisons(workspaceId: string): AppComparisonRecord[] {
+  return getStore()
+    .db.appComparisons.filter((r) => r.workspace_id === workspaceId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+export function deleteAppComparison(id: string): void {
+  const store = getStore();
+  store.db.appComparisons = store.db.appComparisons.filter((r) => r.id !== id);
+  store.persist();
 }
 
 export function getAuditBundle(auditId: string): AuditBundle | null {

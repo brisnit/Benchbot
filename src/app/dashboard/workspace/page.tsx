@@ -1,5 +1,5 @@
 import { requireSession } from "@/lib/auth";
-import { listAudits, listMembersEnriched } from "@/lib/db";
+import { listAudits, listMembersEnriched, listAppComparisons } from "@/lib/db";
 import { auditGoalLabel } from "@/lib/constants";
 import { Whiteboard } from "@/components/board/whiteboard";
 
@@ -7,12 +7,20 @@ export const metadata = { title: "Workspace · BenchBot" };
 
 export default async function TeamSetupPage() {
   const { user, workspace } = await requireSession();
-  const audits = listAudits(workspace.id)
-    .filter((a) => a.status === "complete")
-    .map((a) => ({
-      id: a.id,
-      label: `${a.target_name} · ${auditGoalLabel(a.audit_goal)}`,
-    }));
+  const audits = [
+    ...listAudits(workspace.id)
+      .filter((a) => a.status === "complete")
+      .map((a) => ({
+        id: a.id,
+        kind: "web" as const,
+        label: `${a.target_name} · ${auditGoalLabel(a.audit_goal)}`,
+      })),
+    ...listAppComparisons(workspace.id).map((r) => ({
+      id: r.id,
+      kind: "app" as const,
+      label: `${r.target_name} · App comparison`,
+    })),
+  ];
   const members = listMembersEnriched(workspace.id);
 
   return (

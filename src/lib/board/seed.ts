@@ -1,6 +1,7 @@
 import { uid } from "@/lib/utils";
 import type { AuditBundle } from "@/lib/types";
 import type { BoardElement } from "@/lib/board/types";
+import type { AppComparisonRecord } from "@/lib/apps/record";
 
 // Lays an audit out on the board as labelled columns of sticky notes so a team
 // can start working with the findings immediately.
@@ -161,6 +162,72 @@ export function buildSeedElements(bundle: AuditBundle): BoardElement[] {
         fontSize: 12,
       });
     });
+  }
+
+  return elements;
+}
+
+// Lay an App Compare result onto the board for collaborative review.
+export function buildAppSeedElements(rec: AppComparisonRecord): BoardElement[] {
+  const now = new Date().toISOString();
+  const elements: BoardElement[] = [];
+  let z = 1;
+  const add = (e: Omit<BoardElement, "id" | "z" | "updated_at">) =>
+    elements.push({ ...e, id: uid("be_"), z: z++, updated_at: now });
+
+  const target = rec.apps.find((a) => a.id === rec.target_id) ?? rec.apps[0];
+
+  add({ type: "text", x: 40, y: -90, w: 760, h: 56, text: `${target.name} — App Store Benchmark`, color: "#0B1117", fontSize: 30 });
+  add({ type: "text", x: 40, y: -44, w: 820, h: 30, text: "Drag notes, add your own, and turn the comparison into a plan.", color: "#647488", fontSize: 16 });
+
+  // Column 1: Apps (one sticky per app)
+  add({ type: "text", x: 40, y: 0, w: STICKY_W, h: 34, text: "📱 Apps", color: "#0B1117", fontSize: 20 });
+  let y = 44;
+  for (const a of rec.apps) {
+    add({
+      type: "sticky",
+      x: 40,
+      y,
+      w: STICKY_W,
+      h: STICKY_H,
+      text: `${a.name}\n${a.rating || "—"}★ · ${a.ratingCount.toLocaleString()} ratings\n${a.category} · ${a.price}`,
+      color: a.id === target.id ? "#DDD6FE" : "#FEF08A",
+      fontSize: 13,
+    });
+    y += STICKY_H + GAP_Y;
+  }
+
+  // Column 2: Recommendations
+  add({ type: "text", x: 40 + COL_W, y: 0, w: STICKY_W, h: 34, text: "🚀 Recommendations", color: "#0B1117", fontSize: 20 });
+  let ry = 44;
+  for (const r of rec.comparison.recommendations.slice(0, 6)) {
+    add({ type: "sticky", x: 40 + COL_W, y: ry, w: STICKY_W, h: STICKY_H, text: r, color: "#BBF7D0", fontSize: 13 });
+    ry += STICKY_H + GAP_Y;
+  }
+
+  // Column 3: Target strengths / weaknesses
+  const ins = rec.comparison.insights.find((i) => i.appId === target.id);
+  add({ type: "text", x: 40 + COL_W * 2, y: 0, w: STICKY_W, h: 34, text: "⚖️ Strengths & gaps", color: "#0B1117", fontSize: 20 });
+  let sy = 44;
+  for (const s of ins?.strengths ?? []) {
+    add({ type: "sticky", x: 40 + COL_W * 2, y: sy, w: STICKY_W, h: STICKY_H, text: `✓ ${s}`, color: "#E8FAF3", fontSize: 13 });
+    sy += STICKY_H + GAP_Y;
+  }
+  for (const w of ins?.weaknesses ?? []) {
+    add({ type: "sticky", x: 40 + COL_W * 2, y: sy, w: STICKY_W, h: STICKY_H, text: `△ ${w}`, color: "#FED7AA", fontSize: 13 });
+    sy += STICKY_H + GAP_Y;
+  }
+
+  // Screenshots row for the target app
+  const shots = (target.screenshots.length ? target.screenshots : target.ipadScreenshots).slice(0, 5);
+  if (shots.length) {
+    const bottomY = Math.max(44 + rec.apps.length * (STICKY_H + GAP_Y), sy, ry) + 80;
+    add({ type: "text", x: 40, y: bottomY, w: 400, h: 30, text: `📸 ${target.name} screenshots`, color: "#0B1117", fontSize: 18 });
+    let sx = 40;
+    for (const src of shots) {
+      add({ type: "image", x: sx, y: bottomY + 40, w: 150, h: 320, src, color: "#FFFFFF", fontSize: 12 });
+      sx += 168;
+    }
   }
 
   return elements;

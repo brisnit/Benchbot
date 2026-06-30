@@ -1,17 +1,25 @@
 import Link from "next/link";
 import { Plus, ClipboardList } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { getReport, listAudits, listCompetitors } from "@/lib/db";
+import { getReport, listAudits, listCompetitors, listAppComparisons } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { AuditCard } from "@/components/dashboard/audit-card";
+import { AppComparisonCard } from "@/components/dashboard/app-comparison-card";
 
 export const metadata = { title: "Audits · BenchBot" };
 
 export default async function AuditsPage() {
   const { workspace } = await requireSession();
   const audits = listAudits(workspace.id);
+  const appComparisons = listAppComparisons(workspace.id);
+
+  // merge into one timeline, newest first
+  const items = [
+    ...audits.map((a) => ({ kind: "web" as const, created_at: a.created_at, audit: a })),
+    ...appComparisons.map((r) => ({ kind: "app" as const, created_at: r.created_at, record: r })),
+  ].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -23,7 +31,7 @@ export default async function AuditsPage() {
         </Button>
       </PageHeader>
 
-      {audits.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title="No audits yet"
@@ -38,14 +46,18 @@ export default async function AuditsPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {audits.map((audit) => (
-            <AuditCard
-              key={audit.id}
-              audit={audit}
-              competitorCount={listCompetitors(audit.id).filter((c) => c.selected).length}
-              overallScore={getReport(audit.id)?.report_json.overall_score ?? null}
-            />
-          ))}
+          {items.map((item) =>
+            item.kind === "web" ? (
+              <AuditCard
+                key={item.audit.id}
+                audit={item.audit}
+                competitorCount={listCompetitors(item.audit.id).filter((c) => c.selected).length}
+                overallScore={getReport(item.audit.id)?.report_json.overall_score ?? null}
+              />
+            ) : (
+              <AppComparisonCard key={item.record.id} record={item.record} />
+            ),
+          )}
         </div>
       )}
     </div>

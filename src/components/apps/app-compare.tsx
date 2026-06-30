@@ -14,6 +14,8 @@ import {
   Trophy,
   CheckCircle2,
   AlertTriangle,
+  Users,
+  Presentation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +52,7 @@ export function AppCompare() {
   const [targetId, setTargetId] = React.useState<number | null>(null);
   const [comparing, setComparing] = React.useState(false);
   const [discovering, setDiscovering] = React.useState(false);
-  const [data, setData] = React.useState<{ target: AppInfo; competitors: AppInfo[]; apps: AppInfo[]; comparison: AppComparison } | null>(null);
+  const [data, setData] = React.useState<AppComparisonData | null>(null);
 
   // debounced search
   React.useEffect(() => {
@@ -130,8 +132,6 @@ export function AppCompare() {
     }
   }
 
-  const maxReviews = data ? Math.max(...data.apps.map((a) => a.ratingCount), 1) : 1;
-
   return (
     <div className="space-y-6">
       {/* Picker */}
@@ -209,18 +209,83 @@ export function AppCompare() {
         )}
       </Card>
 
-      {data && <Results data={data} maxReviews={maxReviews} />}
+      {data && <AppComparisonView data={data} />}
     </div>
   );
 }
 
-function Results({ data, maxReviews }: { data: { target: AppInfo; competitors: AppInfo[]; apps: AppInfo[]; comparison: AppComparison }; maxReviews: number }) {
+export interface AppComparisonData {
+  id: string;
+  target: AppInfo;
+  competitors: AppInfo[];
+  apps: AppInfo[];
+  comparison: AppComparison;
+}
+
+export function AppComparisonView({ data }: { data: AppComparisonData }) {
   const { apps, target, comparison } = data;
+  const { toast } = useToast();
+  const [exporting, setExporting] = React.useState(false);
+  const [adding, setAdding] = React.useState(false);
+  const maxReviews = Math.max(...apps.map((a) => a.ratingCount), 1);
   const insightFor = (id: number) => comparison.insights.find((i) => i.appId === id);
   const topRated = [...apps].sort((a, b) => b.rating - a.rating)[0];
 
+  async function exportPptx() {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/apps/${data.id}/pptx`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${target.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-app-benchmark.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "PowerPoint downloaded", variant: "success" });
+    } catch {
+      toast({ title: "Couldn't export PowerPoint", variant: "error" });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function addToWorkspace() {
+    setAdding(true);
+    try {
+      const res = await fetch("/api/board/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: data.id, kind: "app", replace: false }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: "Added to Workspace", description: "Open Workspace to collaborate on it.", variant: "success" });
+    } catch {
+      toast({ title: "Couldn't add to Workspace", variant: "error" });
+    } finally {
+      setAdding(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* actions */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-lg font-bold tracking-tight">{target.name} — app benchmark</h2>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={addToWorkspace} disabled={adding}>
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+            Add to Workspace
+          </Button>
+          <Button variant="secondary" size="sm" onClick={exportPptx} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Presentation className="h-4 w-4" />}
+            Export PowerPoint
+          </Button>
+        </div>
+      </div>
       {/* App cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {apps.map((a) => (

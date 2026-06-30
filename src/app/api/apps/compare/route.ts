@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession, jsonError } from "@/lib/api";
 import { lookupApps } from "@/lib/apps/itunes";
 import { analyzeApps } from "@/lib/apps/analyze";
+import { createOrUpdateAppComparison } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,17 @@ export async function POST(req: NextRequest) {
   const competitors = apps.filter((a) => a.id !== target.id);
   const comparison = await analyzeApps(target, competitors);
 
-  return NextResponse.json({ target, competitors, apps, comparison });
+  // Persist as a saved App Compare "audit" so it can be exported, added to the
+  // workspace, and listed on the Audits page. De-dupes by app set per workspace.
+  const record = createOrUpdateAppComparison({
+    workspace_id: session.workspace.id,
+    user_id: session.user.id,
+    target_name: target.name,
+    target_id: target.id,
+    country: (body.country || "us").toLowerCase(),
+    apps: [target, ...competitors],
+    comparison,
+  });
+
+  return NextResponse.json({ id: record.id, target, competitors, apps, comparison });
 }

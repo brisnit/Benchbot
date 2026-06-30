@@ -40,7 +40,7 @@ import type { BoardElement, BoardElementType, BoardOp, CommentMsg, Presence, Sha
 
 type Tool = "select" | "hand" | "sticky" | "text" | "shape" | "image" | "frame" | "connector" | "comment";
 
-interface AuditOption { id: string; label: string; }
+interface AuditOption { id: string; label: string; kind?: "web" | "app" }
 interface Member { id: string; user_id: string; role: string; name: string; email: string; }
 
 function newId() {
@@ -437,9 +437,9 @@ export function Whiteboard({
     return () => { alive = false; clearInterval(iv); };
   }, [currentUser.id]);
 
-  async function loadAudit(auditId: string) {
+  async function loadAudit(auditId: string, kind: "web" | "app" = "web") {
     try {
-      const res = await fetch("/api/board/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ auditId, replace: true }) });
+      const res = await fetch("/api/board/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: auditId, kind, replace: true }) });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
       const data = await res.json();
       const map: Record<string, BoardElement> = {};
@@ -530,7 +530,7 @@ export function Whiteboard({
             <DropdownMenuLabel>Add an audit&apos;s findings</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {audits.length === 0 && <DropdownMenuItem disabled>No audits yet</DropdownMenuItem>}
-            {audits.map((a) => (<DropdownMenuItem key={a.id} onClick={() => loadAudit(a.id)}>{a.label}</DropdownMenuItem>))}
+            {audits.map((a) => (<DropdownMenuItem key={a.id} onClick={() => loadAudit(a.id, a.kind ?? "web")}>{a.label}</DropdownMenuItem>))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={clearBoard} className="text-critical focus:text-critical"><Trash2 className="h-4 w-4" /> Clear board</DropdownMenuItem>
           </DropdownMenuContent>

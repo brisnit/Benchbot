@@ -14,6 +14,7 @@ import type {
   WorkspaceMember,
 } from "@/lib/types";
 import type { Board } from "@/lib/board/types";
+import type { AppComparisonRecord } from "@/lib/apps/record";
 
 // ─────────────────────────────────────────────────────────────
 // File-backed, in-memory data store used in local / demo mode.
@@ -36,6 +37,7 @@ export interface DbShape {
   findings: AuditFinding[];
   reports: Report[];
   boards: Board[];
+  appComparisons: AppComparisonRecord[];
   // userId -> lightweight password hash (local mock auth only)
   passwords: Record<string, string>;
 }
@@ -54,6 +56,7 @@ function emptyDb(): DbShape {
     findings: [],
     reports: [],
     boards: [],
+    appComparisons: [],
     passwords: {},
   };
 }
