@@ -9,6 +9,7 @@ import {
   Settings,
   Users,
   Sparkles,
+  Smartphone,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/audits", label: "Audits", icon: ClipboardList, exact: false },
+  { href: "/dashboard/apps", label: "App Compare", icon: Smartphone, exact: false },
   { href: "/dashboard/workspace", label: "Workspace", icon: Users, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
