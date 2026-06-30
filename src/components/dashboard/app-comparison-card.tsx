@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Smartphone, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AuditCardMenu } from "@/components/dashboard/audit-card-menu";
 import { relativeTime } from "@/lib/utils";
 import type { AppComparisonRecord } from "@/lib/apps/record";
 
@@ -21,7 +22,10 @@ export function AppComparisonCard({ record }: { record: AppComparisonRecord }) {
               <p className="truncate text-xs text-muted-foreground">{target.developer || "App Store"}</p>
             </div>
           </div>
-          <Badge variant="violet" className="gap-1"><Smartphone className="h-3 w-3" /> App</Badge>
+          <div className="pointer-events-auto flex items-center gap-1.5">
+            <Badge variant="violet" className="gap-1"><Smartphone className="h-3 w-3" /> App</Badge>
+            <AuditCardMenu auditId={record.id} href={href} deleteUrl={`/api/apps/${record.id}`} openLabel="Open comparison" />
+          </div>
         </div>
 
         {/* competitor icon stack */}

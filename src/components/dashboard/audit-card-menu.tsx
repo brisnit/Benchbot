@@ -25,7 +25,17 @@ import { useToast } from "@/components/ui/toast";
 
 // Per-card actions (open / delete). Lives above the card's stretched link so
 // clicking it never navigates.
-export function AuditCardMenu({ auditId, href }: { auditId: string; href: string }) {
+export function AuditCardMenu({
+  auditId,
+  href,
+  deleteUrl,
+  openLabel = "Open audit",
+}: {
+  auditId: string;
+  href: string;
+  deleteUrl?: string;
+  openLabel?: string;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
@@ -34,9 +44,9 @@ export function AuditCardMenu({ auditId, href }: { auditId: string; href: string
   async function remove() {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/audits/${auditId}`, { method: "DELETE" });
+      const res = await fetch(deleteUrl ?? `/api/audits/${auditId}`, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not delete");
-      toast({ title: "Audit deleted", variant: "success" });
+      toast({ title: "Deleted", variant: "success" });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -59,7 +69,7 @@ export function AuditCardMenu({ auditId, href }: { auditId: string; href: string
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem asChild>
             <Link href={href}>
-              <ArrowUpRight className="h-4 w-4" /> Open audit
+              <ArrowUpRight className="h-4 w-4" /> {openLabel}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
