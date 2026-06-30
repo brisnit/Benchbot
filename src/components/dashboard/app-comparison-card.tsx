@@ -11,7 +11,7 @@ export function AppComparisonCard({ record }: { record: AppComparisonRecord }) {
   return (
     <Card className="group relative h-full p-5 transition-all hover:border-brand/40 hover:shadow-md">
       <Link href={href} className="absolute inset-0 z-0 rounded-xl" aria-label={`Open ${record.target_name} comparison`} />
-      <div className="relative z-10">
+      <div className="pointer-events-none relative z-10">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
