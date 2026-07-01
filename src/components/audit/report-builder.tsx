@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, FileType, Presentation, Code2, Eye, Loader2 } from "lucide-react";
+import { FileText, FileType, Presentation, Code2, Eye, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/audit/copy-button";
 import { Markdown } from "@/components/audit/markdown";
@@ -56,19 +56,32 @@ export function ReportBuilder({
 
   return (
     <div>
-      {/* Action bar — hidden when printing */}
-      <div className="mb-5 flex flex-wrap items-center gap-2 print:hidden">
-        <CopyButton value={executiveSummary} label="Copy executive summary" toastLabel="Executive summary copied" />
-        <CopyButton value={fullMarkdown} label="Copy full report markdown" toastLabel="Full report copied" />
-        <Button variant="secondary" size="sm" onClick={exportPdf}>
-          <FileType className="h-4 w-4" /> Export PDF
-        </Button>
-        <Button variant="secondary" size="sm" onClick={exportPptx} disabled={exportingPptx}>
-          {exportingPptx ? <Loader2 className="h-4 w-4 animate-spin" /> : <Presentation className="h-4 w-4" />}
-          Export PowerPoint
-        </Button>
+      {/* Prominent export CTAs — hidden when printing */}
+      <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-brand/20 bg-brand-50/50 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between print:hidden">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-sm">
+            <Download className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="font-display text-base font-bold tracking-tight text-ink">Export &amp; share this report</p>
+            <p className="text-sm text-muted-foreground">Client-ready PDF and PowerPoint, generated from your audit.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="gradient" size="lg" onClick={exportPdf}>
+            <FileType className="h-4 w-4" /> Export PDF
+          </Button>
+          <Button variant="gradient" size="lg" onClick={exportPptx} disabled={exportingPptx}>
+            {exportingPptx ? <Loader2 className="h-4 w-4 animate-spin" /> : <Presentation className="h-4 w-4" />}
+            Export PowerPoint
+          </Button>
+          <CopyButton value={executiveSummary} label="Copy report" toastLabel="Report copied" />
+        </div>
+      </div>
 
-        <div className="ml-auto flex rounded-lg border border-border p-0.5">
+      {/* View toggle */}
+      <div className="mb-4 flex justify-end print:hidden">
+        <div className="flex rounded-lg border border-border p-0.5">
           <ToggleBtn active={view === "formatted"} onClick={() => setView("formatted")}>
             <Eye className="h-3.5 w-3.5" /> Formatted
           </ToggleBtn>

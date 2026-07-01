@@ -111,7 +111,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   // ── 2) CONTENTS (numbered agenda) ──
   const ag = chrome("Contents", "What's inside");
   const agendaItems = [
-    "Executive summary", "Scores at a glance", "Competitor matrix",
+    "Executive summary", "Scores at a glance", "Competitor matrix", "Navigation & IA",
     "Heuristic review", "Gaps & content", "Conversion & GEO", "Action plan",
   ];
   agendaItems.forEach((label, i) => {
@@ -183,8 +183,24 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   });
   mx.addTable([header, ...rows], { x: 0.7, y: 1.95, w: 11.95, colW: [3.05, 1.18, 1.18, 1.18, 1.18, 1.18, 1.27, 1.55], border: { type: "solid", color: WHITE, pt: 2 }, rowH: 0.5, valign: "middle", fontSize: 12 });
 
-  // ── 4) HEURISTIC REVIEW — overview ──
-  const hr = chrome("04 — UX Heuristics", "Heuristic review");
+  // ── 4) NAVIGATION & INFORMATION ARCHITECTURE ──
+  const iaSlide = chrome("04 — Navigation & IA", "Information architecture");
+  const ia = j.ia_comparison;
+  card(iaSlide, 0.7, 1.85, 5.85, 4.85);
+  chip(iaSlide, 0.95, 2.05, "Labels & hierarchy", NAVY);
+  iaSlide.addText(
+    bullets([`Common nav labels: ${ia.common_nav_labels.join(", ")}`, ...ia.hierarchy_differences], { x: 0.95, y: 2.6, w: 5.3, h: 4, size: 11.5 }),
+    { x: 0.95, y: 2.6, w: 5.35, h: 4, valign: "top" },
+  );
+  card(iaSlide, 6.8, 1.85, 5.85, 4.85);
+  chip(iaSlide, 7.05, 2.05, "Search, CTAs & footer", PINK);
+  iaSlide.addText(
+    bullets([`Search: ${ia.search_visibility}`, `CTA placement: ${ia.cta_placement}`, `Footer: ${ia.footer_structure}`], { x: 7.05, y: 2.6, w: 5.3, h: 4, size: 11.5 }),
+    { x: 7.05, y: 2.6, w: 5.35, h: 4, valign: "top" },
+  );
+
+  // ── 5) HEURISTIC REVIEW — overview ──
+  const hr = chrome("05 — UX Heuristics", "Heuristic review");
   card(hr, 0.7, 1.85, 6.4, 4.85, PANEL);
   let hy = 2.12;
   const hStep = 4.3 / j.heuristics.length;
@@ -207,7 +223,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   const heuHalf = Math.ceil(j.heuristics.length / 2);
   [j.heuristics.slice(0, heuHalf), j.heuristics.slice(heuHalf)].forEach((group, gi) => {
     if (!group.length) return;
-    const hd = chrome("04 — UX Heuristics", `Detailed findings  (${gi + 1}/2)`);
+    const hd = chrome("05 — UX Heuristics", `Detailed findings  (${gi + 1}/2)`);
     let yy = 1.92;
     group.forEach((h) => {
       card(hd, 0.7, yy, 11.95, 0.94);
@@ -221,7 +237,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   });
 
   // ── 5) GAPS & CONTENT ──
-  const gp = chrome("05 — Gaps", "Where you're losing ground");
+  const gp = chrome("06 — Gaps", "Where you're losing ground");
   card(gp, 0.7, 1.85, 5.85, 4.85);
   chip(gp, 0.95, 2.05, "Biggest gaps", PINK);
   gp.addText(bullets(j.biggest_gaps, { x: 0.95, y: 2.6, w: 5.3, h: 4 }), { x: 0.95, y: 2.6, w: 5.35, h: 4, valign: "top" });
@@ -233,7 +249,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   );
 
   // ── 9) CONVERSION & GEO ──
-  const cv = chrome("06 — Conversion & GEO", "Convert more, get cited by AI");
+  const cv = chrome("07 — Conversion & GEO", "Convert more, get cited by AI");
   const conv = j.conversion_audit, ai = j.ai_visibility;
   card(cv, 0.7, 1.85, 5.85, 4.85);
   chip(cv, 0.95, 2.05, "Conversion", PINK);
@@ -243,7 +259,7 @@ export async function buildAuditPptx(bundle: AuditBundle): Promise<Buffer> {
   cv.addText(bullets([ai.schema_markup, ai.metadata, ai.faq_schema, ai.crawlability, ai.llm_clarity], { x: 7.05, y: 2.6, w: 5.3, h: 4, size: 11.5 }), { x: 7.05, y: 2.6, w: 5.35, h: 4, valign: "top" });
 
   // ── 10) ACTION PLAN (numbered editorial) ──
-  const ns = chrome("07 — Action Plan", "Recommended next steps");
+  const ns = chrome("08 — Action Plan", "Recommended next steps");
   j.next_steps.slice(0, 5).forEach((step, i) => {
     const y = 1.95 + i * 0.96;
     ns.addText(String(i + 1).padStart(2, "0"), { x: 0.7, y, w: 1.0, h: 0.8, fontSize: 34, bold: true, color: i === 0 ? PINK : GRAY, fontFace: SERIF, valign: "middle" });

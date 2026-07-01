@@ -33,41 +33,43 @@ function priorityVariant(p: FindingPriority): "critical" | "warn" | "secondary" 
 // ── 1. Executive Summary ──────────────────────────────────────
 export function ExecutiveSummarySection({ report }: { report: Report }) {
   const j = report.report_json;
-  const lists: { title: string; icon: React.ComponentType<{ className?: string }>; items: string[]; tone: string }[] = [
+  const quick: { title: string; icon: React.ComponentType<{ className?: string }>; items: string[]; tone: string }[] = [
     { title: "Top findings", icon: FileSearch, items: j.top_findings, tone: "text-brand" },
     { title: "Top opportunities", icon: Lightbulb, items: j.top_opportunities, tone: "text-good" },
     { title: "Biggest gaps", icon: AlertTriangle, items: j.biggest_gaps, tone: "text-critical" },
     { title: "Recommended next steps", icon: ListChecks, items: j.next_steps, tone: "text-violet" },
   ];
   return (
-    <SectionCard icon={Sparkles} title="Executive Summary" description="The headline read on competitive position and where to act first." id="summary">
+    <SectionCard icon={Sparkles} title="Executive Summary" description="The complete read on competitive position — every dimension, in one place." id="summary">
+      {/* Score + at-a-glance highlights */}
       <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
         <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-secondary/30 p-5">
           <ScoreRing score={j.overall_score} label="Overall" size={130} />
           <p className="mt-3 text-center text-xs text-muted-foreground">Composite of all six dimensions</p>
         </div>
-        <div className="prose-sm">
-          <Markdown content={report.executive_summary} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {quick.map((l) => (
+            <div key={l.title} className="rounded-lg border border-border p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <l.icon className={`h-4 w-4 ${l.tone}`} />
+                <h3 className="text-sm font-semibold">{l.title}</h3>
+              </div>
+              <ul className="space-y-1.5">
+                {l.items.slice(0, 5).map((item, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-slate-700">
+                    <span className="font-mono text-xs text-muted-foreground">{i + 1}</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {lists.map((l) => (
-          <div key={l.title} className="rounded-lg border border-border p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <l.icon className={`h-4 w-4 ${l.tone}`} />
-              <h3 className="text-sm font-semibold">{l.title}</h3>
-            </div>
-            <ul className="space-y-1.5">
-              {l.items.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm text-slate-700">
-                  <span className="font-mono text-xs text-muted-foreground">{i + 1}</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      {/* Full comprehensive summary (all report data) */}
+      <div className="mt-6 rounded-xl border border-border bg-secondary/20 p-5">
+        <Markdown content={report.executive_summary} />
       </div>
     </SectionCard>
   );

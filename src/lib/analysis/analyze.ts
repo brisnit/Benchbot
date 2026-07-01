@@ -1,7 +1,7 @@
 import { getOpenAI } from "@/lib/openai/client";
 import { env } from "@/lib/env";
 import { analysisResponseSchema } from "@/lib/analysis/schema";
-import { generateAuditData, buildReportMarkdown, type CompanyInput } from "@/lib/demo/generate";
+import { generateAuditData, buildReportMarkdown, composeExecutiveSummary, type CompanyInput } from "@/lib/demo/generate";
 import { auditGoalLabel, siteTypeLabel } from "@/lib/constants";
 import { clampScore, hostFromUrl, nameFromUrl, uid } from "@/lib/utils";
 import type {
@@ -160,20 +160,18 @@ export async function analyzeAudit(
       ai_estimated: true,
     };
 
-    const execSummary =
-      parsed.top_opportunities.length > 0
-        ? [
-            `${audit.target_name} scores **${reportJson.overall_score}/100** in this ${auditGoalLabel(audit.audit_goal).toLowerCase()}.`,
-            "",
-            "**Top priorities:**",
-            ...parsed.top_opportunities.slice(0, 3).map((o) => `- ${o}`),
-          ].join("\n")
-        : `${audit.target_name} scores ${reportJson.overall_score}/100.`;
-
-    const markdown =
-      parsed.full_report_markdown && parsed.full_report_markdown.length > 200
-        ? parsed.full_report_markdown
-        : buildReportMarkdown(audit, companies, scores, reportJson, auditGoalLabel(audit.audit_goal), execSummary);
+    const goalLabel = auditGoalLabel(audit.audit_goal);
+    // Comprehensive summary (all report data) for the Executive Summary + copy.
+    const execSummary = composeExecutiveSummary(reportJson, audit.target_name, goalLabel);
+    // Short headline for the top of the full report markdown.
+    const headline = [
+      `${audit.target_name} scores **${reportJson.overall_score}/100** in this ${goalLabel.toLowerCase()}.`,
+      "",
+      "**Top priorities:**",
+      ...reportJson.top_opportunities.slice(0, 3).map((o) => `- ${o}`),
+    ].join("\n");
+    // Always build the full report ourselves so every section is present.
+    const markdown = buildReportMarkdown(audit, companies, scores, reportJson, goalLabel, headline);
 
     return {
       scores,
