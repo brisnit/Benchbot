@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import { cn, hostFromUrl, nameFromUrl, normalizeUrl } from "@/lib/utils";
 import {
   AUDIT_GOALS,
@@ -47,12 +48,13 @@ interface CompetitorChoice {
 
 const STEPS = ["Website", "Goal", "Competitors", "Crawl", "Review"];
 
-export function NewAuditWizard() {
+export function NewAuditWizard({ isGuest = true, canRun = true }: { isGuest?: boolean; canRun?: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [step, setStep] = React.useState(0);
   const [submitting, setSubmitting] = React.useState(false);
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
 
   // step 1
   const [url, setUrl] = React.useState("");
@@ -193,6 +195,11 @@ export function NewAuditWizard() {
   }
 
   async function startAudit() {
+    // Out of audits → show the upgrade prompt instead of starting.
+    if (!canRun) {
+      setUpgradeOpen(true);
+      return;
+    }
     setSubmitting(true);
     try {
       const normalized = normalizeUrl(url)!;
@@ -208,6 +215,11 @@ export function NewAuditWizard() {
           crawlSettings: crawl,
         }),
       });
+      if (createRes.status === 402) {
+        setUpgradeOpen(true);
+        setSubmitting(false);
+        return;
+      }
       if (!createRes.ok) throw new Error((await createRes.json()).error ?? "Could not create audit");
       const { audit } = await createRes.json();
 
@@ -510,6 +522,8 @@ export function NewAuditWizard() {
           )}
         </div>
       </div>
+
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} isGuest={isGuest} />
     </div>
   );
 }

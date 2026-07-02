@@ -45,6 +45,10 @@ export function ensureDemoSeed(): void {
     name: "Northstar Agency",
     owner_id: user.id,
     plan: "agency",
+    plan_cycle: "monthly",
+    audits_used: 37,
+    lifetime_audits: 214,
+    period_start: now.toISOString(),
     created_at: now.toISOString(),
   };
   store.db.workspaces.push(workspace);

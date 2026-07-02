@@ -8,20 +8,20 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { getReport, listAudits, listCompetitors } from "@/lib/db";
+import { getReport, listAudits, listCompetitors, getUsage } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { AuditCard } from "@/components/dashboard/audit-card";
-import { Progress } from "@/components/ui/progress";
+import { UsageCard } from "@/components/billing/usage-card";
 
 export default async function DashboardHome() {
   const { user, workspace } = await requireSession();
   const audits = listAudits(workspace.id);
   const recent = audits.slice(0, 6);
   const completed = audits.filter((a) => a.status === "complete").length;
-  const usageLimit = 10;
+  const usage = getUsage(workspace.id);
 
   const firstName = (user.name || "there").split(" ")[0];
 
@@ -62,21 +62,8 @@ export default async function DashboardHome() {
             </div>
           </CardContent>
         </Card>
-        {/* Usage card */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Monthly usage</p>
-              <span className="font-mono text-xs text-muted-foreground">
-                {audits.length}/{usageLimit}
-              </span>
-            </div>
-            <Progress value={Math.min(100, (audits.length / usageLimit) * 100)} className="mt-3" />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {Math.max(0, usageLimit - audits.length)} audits left on the {workspace.plan ?? "free"} plan.
-            </p>
-          </CardContent>
-        </Card>
+        {/* Usage / plan card */}
+        <UsageCard usage={usage} />
       </div>
 
       {/* Recent audits */}

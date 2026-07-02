@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession, jsonError } from "@/lib/api";
-import { createAudit, listAudits } from "@/lib/db";
+import { createAudit, listAudits, getUsage, recordAuditUsage } from "@/lib/db";
 import { normalizeUrl, nameFromUrl } from "@/lib/utils";
 import { SITE_TYPES, AUDIT_GOALS, CRAWL_OPTIONS, DEVICE_MODES } from "@/lib/constants";
 import type { AuditGoal, DeviceMode, SiteType } from "@/lib/types";
@@ -37,6 +37,21 @@ export async function POST(req: NextRequest) {
   const url = normalizeUrl(parsed.data.targetUrl);
   if (!url) return jsonError("That doesn't look like a valid website URL.");
 
+  // Enforce the plan's audit allowance.
+  const usage = getUsage(session.workspace.id);
+  if (usage.remaining <= 0) {
+    return NextResponse.json(
+      {
+        error: usage.isGuest
+          ? "You've used your 2 free BenchBot audits."
+          : "You've reached your plan's monthly audit limit.",
+        upgrade: true,
+        usage,
+      },
+      { status: 402 },
+    );
+  }
+
   const audit = createAudit({
     workspace_id: session.workspace.id,
     user_id: session.user.id,
@@ -52,5 +67,7 @@ export async function POST(req: NextRequest) {
     error: null,
   });
 
-  return NextResponse.json({ audit }, { status: 201 });
+  recordAuditUsage(session.workspace.id);
+
+  return NextResponse.json({ audit, usage: getUsage(session.workspace.id) }, { status: 201 });
 }

@@ -1,5 +1,6 @@
 import { KeyRound, Sparkles, Globe } from "lucide-react";
 import { requireSession } from "@/lib/auth";
+import { getUsage } from "@/lib/db";
 import { hasOpenAI, hasSupabase, env } from "@/lib/env";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { UsageCard } from "@/components/billing/usage-card";
+import { BillingActions } from "@/components/billing/billing-actions";
 
 export const metadata = { title: "Settings · BenchBot" };
 
@@ -15,7 +18,8 @@ function StatusBadge({ on, onLabel, offLabel }: { on: boolean; onLabel: string; 
 }
 
 export default async function SettingsPage() {
-  const { user } = await requireSession();
+  const { user, workspace } = await requireSession();
+  const usage = getUsage(workspace.id);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -70,13 +74,21 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Billing</CardTitle>
+            <CardTitle className="text-base">Plan &amp; billing</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Billing is Stripe-ready but stubbed for this MVP. Manage your plan from the pricing page.
-            </p>
-            <Button variant="secondary" className="mt-4" disabled>Manage billing (coming soon)</Button>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-[1fr_1.2fr] sm:items-center">
+              <UsageCard usage={usage} />
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Change, upgrade, downgrade or cancel anytime. Monthly &amp; annual billing supported.
+                  Payments are Stripe-ready and mocked for this MVP — no card is charged.
+                </p>
+                <div className="mt-4">
+                  <BillingActions plan={usage.plan} />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

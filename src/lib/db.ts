@@ -1,6 +1,7 @@
 import { getStore } from "@/lib/store/local-store";
 import { uid } from "@/lib/utils";
 import type { AppComparisonRecord } from "@/lib/apps/record";
+import { getPlan } from "@/lib/billing/plans";
 import type {
   Audit,
   AuditBundle,
@@ -66,7 +67,11 @@ export function createWorkspace(name: string, ownerId: string): Workspace {
     id: uid("ws_"),
     name,
     owner_id: ownerId,
-    plan: "free",
+    plan: "guest",
+    plan_cycle: "monthly",
+    audits_used: 0,
+    lifetime_audits: 0,
+    period_start: nowIso(),
     created_at: nowIso(),
   };
   store.db.workspaces.push(ws);
@@ -177,6 +182,92 @@ export function updateWorkspace(id: string, patch: Partial<Workspace>): Workspac
   const ws = store.db.workspaces.find((w) => w.id === id);
   if (!ws) return undefined;
   Object.assign(ws, patch);
+  store.persist();
+  return ws;
+}
+
+// ---------- Usage & billing ----------
+
+const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
+export interface Usage {
+  plan: string;
+  cycle: "monthly" | "annual";
+  limit: number; // Infinity for enterprise
+  used: number;
+  remaining: number;
+  lifetime: number;
+  unlimited: boolean;
+  isGuest: boolean;
+  renewsAt: string | null; // null for guest / enterprise
+}
+
+/** Compute usage for a workspace, rolling the monthly period if elapsed. */
+export function getUsage(workspaceId: string): Usage {
+  const store = getStore();
+  const ws = store.db.workspaces.find((w) => w.id === workspaceId);
+  const plan = getPlan(ws?.plan);
+  const isGuest = plan.id === "guest";
+  const unlimited = plan.audits === Infinity;
+
+  if (!ws) {
+    return { plan: plan.id, cycle: "monthly", limit: plan.audits, used: 0, remaining: plan.audits, lifetime: 0, unlimited, isGuest, renewsAt: null };
+  }
+
+  // Roll the monthly window for paid plans.
+  if (!isGuest && !unlimited) {
+    const start = ws.period_start ? new Date(ws.period_start).getTime() : 0;
+    if (Date.now() - start > PERIOD_MS) {
+      ws.period_start = nowIso();
+      ws.audits_used = 0;
+      store.persist();
+    }
+  }
+
+  const lifetime = ws.lifetime_audits ?? 0;
+  // Guest allowance is lifetime; paid plans are per-period.
+  const used = isGuest ? lifetime : ws.audits_used ?? 0;
+  const remaining = unlimited ? Infinity : Math.max(0, plan.audits - used);
+  const renewsAt =
+    isGuest || unlimited ? null : new Date((ws.period_start ? new Date(ws.period_start).getTime() : Date.now()) + PERIOD_MS).toISOString();
+
+  return {
+    plan: plan.id,
+    cycle: (ws.plan_cycle as "monthly" | "annual") ?? "monthly",
+    limit: plan.audits,
+    used,
+    remaining,
+    lifetime,
+    unlimited,
+    isGuest,
+    renewsAt,
+  };
+}
+
+/** True if the workspace can start another audit. */
+export function canRunAudit(workspaceId: string): boolean {
+  return getUsage(workspaceId).remaining > 0;
+}
+
+/** Record one audit against the workspace's allowance. */
+export function recordAuditUsage(workspaceId: string): void {
+  const store = getStore();
+  const ws = store.db.workspaces.find((w) => w.id === workspaceId);
+  if (!ws) return;
+  ws.audits_used = (ws.audits_used ?? 0) + 1;
+  ws.lifetime_audits = (ws.lifetime_audits ?? 0) + 1;
+  store.persist();
+}
+
+/** Change plan (mock checkout). Resets the usage period. */
+export function setPlan(workspaceId: string, plan: string, cycle: "monthly" | "annual" = "monthly"): Workspace | undefined {
+  const store = getStore();
+  const ws = store.db.workspaces.find((w) => w.id === workspaceId);
+  if (!ws) return undefined;
+  ws.plan = plan;
+  ws.plan_cycle = cycle;
+  ws.audits_used = 0;
+  ws.period_start = nowIso();
   store.persist();
   return ws;
 }

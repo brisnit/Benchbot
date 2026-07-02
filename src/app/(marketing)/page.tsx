@@ -64,20 +64,21 @@ export default function LandingPage() {
         <div className="container flex flex-col items-center py-20 text-center md:py-28">
           <Badge variant="violet" className="mb-5 gap-1.5 py-1 pl-1.5 pr-3">
             <Sparkles className="h-3.5 w-3.5" />
-            Competitive UX benchmarking, audited by AI
+            Your AI website improvement platform
           </Badge>
           <h1 className="max-w-4xl text-balance text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
-            Benchmark anything.{" "}
-            <span className="gradient-text">In minutes, not days.</span>
+            Improve your website,{" "}
+            <span className="gradient-text">continuously.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-balance text-lg text-slate-600">
-            BenchBot turns days of competitive UX research into a 15-minute, client-ready report:
-            heuristic scoring, screenshots, visual sitemaps, content gaps and executive recommendations.
+            BenchBot isn&apos;t a one-off audit tool — it&apos;s an AI platform that keeps making your
+            site better: UX, SEO, accessibility and performance insights, competitor benchmarking, and
+            tracked progress over time. Start with <strong className="text-ink">2 free audits</strong> — no card required.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Button asChild variant="gradient" size="lg">
               <Link href="/signup">
-                Start your first audit <ArrowRight className="h-4 w-4" />
+                Start free — 2 audits <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild variant="secondary" size="lg">

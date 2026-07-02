@@ -16,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BenchBot — Competitive website audits, powered by AI",
+  title: "BenchBot — Your AI website improvement platform",
   description:
-    "BenchBot turns days of competitive UX research into a 15-minute, client-ready report: heuristic scoring, screenshots, visual sitemaps, content gaps and executive recommendations.",
+    "BenchBot is an AI platform that continuously improves your website: UX, SEO, accessibility and performance insights, competitor benchmarking, progress tracking and client-ready reports. Start with 2 free audits.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
 };
 

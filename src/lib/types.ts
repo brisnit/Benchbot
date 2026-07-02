@@ -73,7 +73,11 @@ export interface Workspace {
   id: string;
   name: string;
   owner_id: string;
-  plan?: string;
+  plan?: string; // PlanId — "guest" by default
+  plan_cycle?: "monthly" | "annual";
+  audits_used?: number; // used in the current billing period
+  lifetime_audits?: number;
+  period_start?: string; // ISO — start of the current usage period
   created_at: string;
 }
 
