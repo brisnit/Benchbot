@@ -9,6 +9,7 @@ import type {
   Report,
   Screenshot,
   Sitemap,
+  ImprovementTask,
   User,
   Workspace,
   WorkspaceMember,
@@ -36,6 +37,7 @@ export interface DbShape {
   scores: AuditScore[];
   findings: AuditFinding[];
   reports: Report[];
+  tasks: ImprovementTask[];
   boards: Board[];
   appComparisons: AppComparisonRecord[];
   // userId -> lightweight password hash (local mock auth only)
@@ -55,6 +57,7 @@ function emptyDb(): DbShape {
     scores: [],
     findings: [],
     reports: [],
+    tasks: [],
     boards: [],
     appComparisons: [],
     passwords: {},

@@ -128,6 +128,56 @@ export function ensureDemoSeed(): void {
     updated_at: created,
   });
 
+  // Seed two earlier audits of the same site so Progress shows an upward trend.
+  const history = [
+    { days: 60, overall: 52, ux: 64, mobile: 40, content: 55, conversion: 49, ai: 50 },
+    { days: 30, overall: 59, ux: 72, mobile: 45, content: 60, conversion: 55, ai: 57 },
+  ];
+  history.forEach((h, i) => {
+    const when = new Date(now.getTime() - h.days * 24 * 60 * 60 * 1000).toISOString();
+    const aid = `aud_demo_h${i + 1}`;
+    store.db.audits.push({
+      id: aid,
+      workspace_id: workspace.id,
+      user_id: user.id,
+      target_url: "https://acmecloud.com",
+      target_name: "Acme Cloud",
+      site_type: "saas",
+      audit_goal: "full_benchmark",
+      status: "complete",
+      device_mode: "both",
+      crawl_settings: ["homepage"],
+      progress: 100,
+      error: null,
+      created_at: when,
+      updated_at: when,
+      completed_at: when,
+    });
+    store.db.scores.push({
+      id: `scr_${aid}`,
+      audit_id: aid,
+      competitor_id: null,
+      company_name: "Acme Cloud",
+      url: "https://acmecloud.com",
+      ux_score: h.ux,
+      mobile_score: h.mobile,
+      navigation_score: h.overall,
+      content_score: h.content,
+      conversion_score: h.conversion,
+      ai_visibility_score: h.ai,
+      created_at: when,
+    });
+    store.db.reports.push({
+      id: `rep_${aid}`,
+      audit_id: aid,
+      executive_summary: `Acme Cloud scored ${h.overall}/100.`,
+      full_report_markdown: `# Acme Cloud\n\nOverall ${h.overall}/100.`,
+      report_json: { ...data.report.report_json, overall_score: h.overall },
+      created_at: when,
+      updated_at: when,
+    });
+  });
+
   store.persist();
   seeded = true;
 }

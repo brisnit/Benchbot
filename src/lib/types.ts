@@ -311,6 +311,21 @@ export interface ReportJson {
   ai_estimated: boolean; // true when generated without real web data
 }
 
+export interface ImprovementTask {
+  id: string;
+  audit_id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: FindingPriority;
+  impact_points: number; // estimated score uplift
+  impact_label: string; // e.g. "+14 UX score"
+  effort_hours: number;
+  effort_label: string; // e.g. "2 hours"
+  completed: boolean;
+  created_at: string;
+}
+
 export interface Report {
   id: string;
   audit_id: string;

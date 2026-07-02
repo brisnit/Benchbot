@@ -1,7 +1,9 @@
 import { getStore } from "@/lib/store/local-store";
 import { uid } from "@/lib/utils";
 import type { AppComparisonRecord } from "@/lib/apps/record";
+import type { ImprovementTask } from "@/lib/types";
 import { getPlan } from "@/lib/billing/plans";
+import { buildTasksForAudit } from "@/lib/tasks/generate";
 import type {
   Audit,
   AuditBundle,
@@ -413,6 +415,33 @@ export function upsertReport(auditId: string, report: Omit<Report, "id" | "creat
   store.db.reports.push(created);
   store.persist();
   return created;
+}
+
+// ---------- Improvement tasks ----------
+
+export function getOrCreateTasks(auditId: string): ImprovementTask[] {
+  const store = getStore();
+  const existing = store.db.tasks.filter((t) => t.audit_id === auditId);
+  if (existing.length) return existing;
+  const bundle = getAuditBundle(auditId);
+  if (!bundle || !bundle.report) return [];
+  const tasks = buildTasksForAudit(bundle);
+  store.db.tasks.push(...tasks);
+  store.persist();
+  return tasks;
+}
+
+export function toggleTask(auditId: string, taskId: string): ImprovementTask | undefined {
+  const store = getStore();
+  const task = store.db.tasks.find((t) => t.id === taskId && t.audit_id === auditId);
+  if (!task) return undefined;
+  task.completed = !task.completed;
+  store.persist();
+  return task;
+}
+
+export function listTasks(auditId: string): ImprovementTask[] {
+  return getStore().db.tasks.filter((t) => t.audit_id === auditId);
 }
 
 // ---------- Hydration ----------

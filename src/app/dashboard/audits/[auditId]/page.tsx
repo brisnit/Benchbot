@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Camera, GitBranch, FileText } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { getAuditBundle, userInWorkspace } from "@/lib/db";
+import { getAuditBundle, userInWorkspace, getOrCreateTasks } from "@/lib/db";
 import { hostFromUrl } from "@/lib/utils";
+import { ImprovementTasks } from "@/components/audit/improvement-tasks";
 import { isRunning } from "@/lib/audit-helpers";
 import { RunView } from "@/components/audit/run-view";
 import { AuditTopbar } from "@/components/audit/audit-topbar";
@@ -79,6 +80,7 @@ export default async function AuditDetailPage({
 
       <div className="space-y-6">
         <ExecutiveSummarySection report={report} />
+        <ImprovementTasks auditId={audit.id} initialTasks={getOrCreateTasks(audit.id)} />
         <CompetitorMatrixSection scores={scores} />
 
         {/* quick links to dedicated views */}
