@@ -49,6 +49,7 @@ export function ensureDemoSeed(): void {
     audits_used: 37,
     lifetime_audits: 214,
     period_start: now.toISOString(),
+    weekly_enabled: true,
     created_at: now.toISOString(),
   };
   store.db.workspaces.push(workspace);
@@ -166,6 +167,28 @@ export function ensureDemoSeed(): void {
       conversion_score: h.conversion,
       ai_visibility_score: h.ai,
       created_at: when,
+    });
+    // competitor scores (roughly stable over time) so the vs-competitor chart has lines
+    const compScores = [
+      { name: "Vercel", url: "https://vercel.com", base: 72 + i },
+      { name: "Netlify", url: "https://netlify.com", base: 68 + i },
+      { name: "Linear", url: "https://linear.app", base: 84 },
+    ];
+    compScores.forEach((c, ci) => {
+      store.db.scores.push({
+        id: `scr_${aid}_c${ci}`,
+        audit_id: aid,
+        competitor_id: `cmp_${aid}_${ci}`,
+        company_name: c.name,
+        url: c.url,
+        ux_score: c.base + 4,
+        mobile_score: c.base,
+        navigation_score: c.base,
+        content_score: c.base - 2,
+        conversion_score: c.base - 4,
+        ai_visibility_score: c.base - 6,
+        created_at: when,
+      });
     });
     store.db.reports.push({
       id: `rep_${aid}`,

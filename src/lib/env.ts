@@ -16,6 +16,11 @@ export const env = {
   livekitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "",
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? "",
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? "",
+  // Email (weekly summaries) via Resend. When unset, summaries are logged only.
+  resendKey: process.env.RESEND_API_KEY ?? "",
+  resendFrom: process.env.RESEND_FROM || "BenchBot <onboarding@resend.dev>",
+  // Shared secret to authorise the weekly cron endpoint.
+  cronSecret: process.env.CRON_SECRET ?? "",
 };
 
 /** True when a real Supabase project is configured. */
@@ -31,6 +36,11 @@ export function hasOpenAI(): boolean {
 /** True when LiveKit is fully configured (SFU + TURN for large calls). */
 export function hasLiveKit(): boolean {
   return Boolean(env.livekitUrl && env.livekitApiKey && env.livekitApiSecret);
+}
+
+/** True when an email provider (Resend) is configured. */
+export function hasEmail(): boolean {
+  return Boolean(env.resendKey);
 }
 
 /** Single source of truth for whether we use the local in-memory backend. */

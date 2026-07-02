@@ -104,6 +104,19 @@ export function getPrimaryWorkspace(userId: string): Workspace | undefined {
   return listWorkspacesForUser(userId)[0];
 }
 
+export function listAllWorkspaces(): Workspace[] {
+  return getStore().db.workspaces;
+}
+
+export function setWeeklyEnabled(workspaceId: string, enabled: boolean): Workspace | undefined {
+  const store = getStore();
+  const ws = store.db.workspaces.find((w) => w.id === workspaceId);
+  if (!ws) return undefined;
+  ws.weekly_enabled = enabled;
+  store.persist();
+  return ws;
+}
+
 export function listMembers(workspaceId: string): WorkspaceMember[] {
   return getStore().db.members.filter((m) => m.workspace_id === workspaceId);
 }

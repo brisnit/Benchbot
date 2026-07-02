@@ -78,6 +78,7 @@ export interface Workspace {
   audits_used?: number; // used in the current billing period
   lifetime_audits?: number;
   period_start?: string; // ISO — start of the current usage period
+  weekly_enabled?: boolean; // automated weekly re-audits (Pro/Agency)
   created_at: string;
 }
 

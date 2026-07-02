@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UsageCard } from "@/components/billing/usage-card";
 import { BillingActions } from "@/components/billing/billing-actions";
+import { WeeklyAudits } from "@/components/billing/weekly-audits";
+import { weeklyEligible } from "@/lib/weekly";
 
 export const metadata = { title: "Settings · BenchBot" };
 
@@ -88,6 +90,10 @@ export default async function SettingsPage() {
                   <BillingActions plan={usage.plan} />
                 </div>
               </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <WeeklyAudits eligible={weeklyEligible(usage.plan)} initialEnabled={Boolean(workspace.weekly_enabled)} />
             </div>
           </CardContent>
         </Card>

@@ -33,7 +33,8 @@ export function Sparkline({
 export interface Series {
   name: string;
   color: string;
-  values: number[];
+  values: (number | null)[];
+  dashed?: boolean;
 }
 
 export function ProgressChart({
@@ -74,22 +75,22 @@ export function ProgressChart({
         {labels.map((l, i) => (
           <text key={i} x={x(i)} y={H - 12} textAnchor="middle" fontSize={10} fill="#647488">{l}</text>
         ))}
-        {/* series */}
-        {series.map((s) => (
-          <g key={s.name}>
-            <polyline
-              points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {s.values.map((v, i) => (
-              <circle key={i} cx={x(i)} cy={y(v)} r={3} fill="#fff" stroke={s.color} strokeWidth={2} />
-            ))}
-          </g>
-        ))}
+        {/* series — path with gaps where a value is null */}
+        {series.map((s) => {
+          let d = "";
+          let pen = false;
+          s.values.forEach((v, i) => {
+            if (v == null) { pen = false; return; }
+            d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
+            pen = true;
+          });
+          return (
+            <g key={s.name}>
+              <path d={d} fill="none" stroke={s.color} strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={s.dashed ? "5 4" : undefined} />
+              {s.values.map((v, i) => (v == null ? null : <circle key={i} cx={x(i)} cy={y(v)} r={3} fill="#fff" stroke={s.color} strokeWidth={2} />))}
+            </g>
+          );
+        })}
       </svg>
       {/* legend */}
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 px-1">
